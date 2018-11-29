@@ -789,14 +789,13 @@ public:
 	* @param id, entry of the viewer.
 	*/
 	void NotoSave_Resend( int id );
-
-	/**
-	* @brief Gets the entry list of the given CChar.
-	*
-	* @param pChar, CChar to retrieve the entry number for.
-	* @return the entry number.
-	*/
-	int NotoSave_GetID( CChar * pChar );
+    /**
+    * @brief Gets the entry list of the given CUID.
+    *
+    * @param dwUID, CUID to retrieve the entry number for.
+    * @return the entry number.
+    */
+    int NotoSave_GetID(CUID dwUID);
 
 	/**
 	* @brief Removing stored data for pChar.
@@ -972,7 +971,7 @@ public:
 
 	// Memories about objects in the world. -------------------
 	bool Memory_OnTick( CItemMemory * pMemory );
-	bool Memory_UpdateFlags( CItemMemory * pMemory );
+	bool Memory_UpdateFlags( CItemMemory * pMemory , dword dwOldFlags = 0);
 	bool Memory_UpdateClearTypes( CItemMemory * pMemory, word MemTypes );
 	void Memory_AddTypes( CItemMemory * pMemory, word MemTypes );
 	bool Memory_ClearTypes( CItemMemory * pMemory, word MemTypes );

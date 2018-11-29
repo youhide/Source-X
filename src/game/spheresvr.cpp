@@ -271,6 +271,7 @@ MainThread::MainThread()
     m_profile.EnableProfile(PROFILE_MULTIS);
     m_profile.EnableProfile(PROFILE_NPC_AI);
     m_profile.EnableProfile(PROFILE_SCRIPTS);
+    m_profile.EnableProfile(PROFILE_SECTORS);
     m_profile.EnableProfile(PROFILE_SHIPS);
     m_profile.EnableProfile(PROFILE_TIMEDFUNCTIONS);
     m_profile.EnableProfile(PROFILE_TIMERS);

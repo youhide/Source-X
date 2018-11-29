@@ -156,7 +156,6 @@ private:
 
 public:
 	bool m_fLockOpen;
-	SimpleMutex m_mutex;
 
 protected:	const CScript * _SetScriptContext( const CScript * pScriptContext );
 public:     const CScript * SetScriptContext( const CScript * pScriptContext );

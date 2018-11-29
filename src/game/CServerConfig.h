@@ -80,6 +80,13 @@ enum EF_TYPE
 #endif
 };
 
+enum SLF_TYPE
+{
+    SLF_DEFAULT,
+    SLF_INSTASLEEP,
+    SLF_NOSLEEP
+};
+
 ///////////////////////////////////////
 
 
@@ -135,7 +142,7 @@ public:
 	int	 m_fUseHTTP;            // Use the built in http server
 	bool m_fUseAuthID;          // Use the OSI AuthID to avoid possible hijack to game server.
 	int64  m_iMapCacheTime;     // Time in sec to keep unused map data..
-	int	 _iSectorSleepDelay;    // The mask for how long sectors will sleep.
+    SLF_TYPE _eSectorSleepFlag; // How should sectors manage sleeping behaviour.
 	bool m_fUseMapDiffs;        // Whether or not to use map diff files.
 
 	CSString m_sWorldBaseDir;   // save\" = world files go here.

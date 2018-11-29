@@ -1937,19 +1937,26 @@ WAR_SWING_TYPE CChar::Fight_Hit( CChar * pCharTarg )
 		// Make blood effects
 		if ( pCharTarg->m_wBloodHue != (HUE_TYPE)(-1) )
 		{
-			static const ITEMID_TYPE sm_Blood[] = { ITEMID_BLOOD1, ITEMID_BLOOD2, ITEMID_BLOOD3, ITEMID_BLOOD4, ITEMID_BLOOD5, ITEMID_BLOOD6, ITEMID_BLOOD_SPLAT };
-			int iBloodQty = (g_Cfg.m_iFeatureSE & FEATURE_SE_UPDATE) ? Calc_GetRandVal2(4, 5) : Calc_GetRandVal2(1, 2);
+            int64 iBloodChance = GetDefNum("BloodChance", true);
+            if (iBloodChance == 0)
+            {
+                iBloodChance = 33;
+            }
+            if (Calc_GetRandLLVal(100) < iBloodChance)
+            {
+                static const ITEMID_TYPE sm_Blood[] = { ITEMID_BLOOD1, ITEMID_BLOOD2, ITEMID_BLOOD3, ITEMID_BLOOD4, ITEMID_BLOOD5, ITEMID_BLOOD6, ITEMID_BLOOD_SPLAT };
+                int iBloodQty = (g_Cfg.m_iFeatureSE & FEATURE_SE_UPDATE) ? Calc_GetRandVal2(4, 5) : Calc_GetRandVal2(1, 2);
+                for (int i = 0; i < iBloodQty; ++i)
+                {
+                    CPointMap pt = pCharTarg->GetTopPoint();
+                    ITEMID_TYPE iBloodID = sm_Blood[Calc_GetRandVal(CountOf(sm_Blood))];
 
-			for ( int i = 0; i < iBloodQty; ++i )
-			{
-                ITEMID_TYPE iBloodID = sm_Blood[Calc_GetRandVal(CountOf(sm_Blood))];
-
-                CPointMap pt = pCharTarg->GetTopPoint();
-                pt.m_x += (short)Calc_GetRandVal2(-1, 1);
-                pt.m_y += (short)Calc_GetRandVal2(-1, 1);
-                EffectXYZ(EFFECT_XYZ, iBloodID, nullptr, &pt, 50, 0, false, pCharTarg->m_wBloodHue);
-			}
-		}
+                    pt.m_x += (short)Calc_GetRandVal2(-1, 1);
+                    pt.m_y += (short)Calc_GetRandVal2(-1, 1);
+                    EffectXYZ(EFFECT_XYZ, iBloodID, nullptr, &pt, 50, 0, false, pCharTarg->m_wBloodHue);
+                }
+			}	
+        }
 
 		// Check for passive skill gain
 		if ( m_pPlayer && !pCharTarg->m_pArea->IsFlag(REGION_FLAG_NO_PVP) )

@@ -101,6 +101,8 @@ public:
 	void ClientAttach( CChar * pChar );
 	void ClientDetach( CChar * pChar );
 	bool MoveCharToSector( CChar * pChar );
+    void AddChar(CChar *pChar);
+    void DelChar(CChar *pChar);
 
 	// CCTimedObject
 private:

@@ -30,6 +30,7 @@ CSector::CSector() : CCTimedObject(PROFILE_SECTORS)
 
 	m_dwFlags = 0;
 	m_fSaveParity = false;
+    m_Chars_Active.init(this);
     GoSleep();    // Every sector is sleeping at start, they only awake when any player enter (this eases the load at startup).
 }
 
@@ -100,7 +101,7 @@ bool CSector::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * pSrc )
             {
                 pszKey += 8;
                 bool fCheckAdjacents = Exp_GetVal(pszKey);
-                sVal.FormatBVal(CanSleep(fCheckAdjacents));
+                sVal.FormatVal(CanSleep(fCheckAdjacents));
                 return true;
             }
 		case SC_CLIENTS:
@@ -197,6 +198,19 @@ void CSector::GoSleep()
 		if (!pItem->IsSleeping())
 	        pItem->GoSleep();
     }
+
+    for (const auto &iDir : _mAdjacentSectors)
+    {
+        CSector *pSector = iDir.second;
+        if (!pSector)
+        {
+            continue;
+        }
+        if (!pSector->IsSleeping() && pSector->CanSleep(true))
+        {
+            pSector->GoSleep();
+        }
+    }
 }
 
 void CSector::GoAwake()
@@ -211,7 +225,9 @@ void CSector::GoAwake()
     {
         pCharNext = pChar->GetNext();
         if (pChar->IsSleeping())
+        {
             pChar->GoAwake();
+        }
     }
 
     pChar = static_cast<CChar*>(m_Chars_Disconnect.GetHead());
@@ -219,7 +235,9 @@ void CSector::GoAwake()
     {
         pCharNext = pChar->GetNext();
         if (pChar->IsSleeping())
+        {
             pChar->GoAwake();
+        }
     }
 
     CItem * pItemNext = nullptr;
@@ -227,15 +245,19 @@ void CSector::GoAwake()
     for (; pItem != nullptr; pItem = pItemNext)
     {
         pItemNext = pItem->GetNext();
-		if (pItem->IsSleeping())
-        	pItem->GoAwake();
+        if (pItem->IsSleeping())
+        {
+            pItem->GoAwake();
+        }
     }
     pItem = static_cast <CItem*>(m_Items_Inert.GetHead());
     for (; pItem != nullptr; pItem = pItemNext)
     {
         pItemNext = pItem->GetNext();
         if (pItem->IsSleeping())
-			pItem->GoAwake();
+        {
+            pItem->GoAwake();
+        }
     }
 
     /*
@@ -256,7 +278,6 @@ void CSector::GoAwake()
             }
         }
     }
-    OnTick();   // Unknown time passed, make the sector tick now to reflect any possible environ changes.
 }
 
 bool CSector::r_LoadVal( CScript &s )
@@ -1029,51 +1050,84 @@ bool CSector::MoveCharToSector( CChar * pChar )
 		}
 	}
 
+    AddChar(pChar);
     m_Chars_Active.AddCharToSector(pChar);	// remove from previous spot.
-    if (IsSleeping())
-    {
-        CClient *pClient = pChar->GetClient();
-        if (pClient)    // A client just entered
-        {
-            GoAwake();    // Awake the sector
-        }
-        else if (!pChar->IsSleeping())    // An NPC entered, but the sector is sleeping
-        {
-            pChar->GoSleep(); // then make the NPC sleep too.
-        }
-    }
-    else
-    {
-        if (pChar->m_pNPC && pChar->IsSleeping())
-        {
-            pChar->GoAwake();
-        }
-    }
 	
 	return true;
+}
+
+void CSector::AddChar(CChar *pChar)
+{
+    if (!g_Serv.IsLoading())
+    {
+        if (IsSleeping())
+        {
+            CClient *pClient = pChar->GetClient();
+            if (pClient)    // A client just entered
+            {
+                GoAwake();    // Awake the sector
+            }
+            else if (!pChar->IsSleeping())    // An NPC entered, but the sector is sleeping
+            {
+                pChar->GoSleep(); // then make the NPC sleep too.
+            }
+        }
+        else
+        {
+            if (pChar->m_pNPC && pChar->IsSleeping())
+            {
+                pChar->GoAwake();
+            }
+        }
+    }
+	return;
+}
+
+void CSector::DelChar(CChar* pChar)
+{
+    if (IsSleeping())
+    {
+        return; // Already sleeping, no need to make it sleep again.
+    }
+    if (m_Chars_Active.HasClients() == 0)   // if there are no active clients
+    { 
+        if (pChar->IsClient())  // and who left is a client
+        {
+            if (CanSleep(true)) // check if it can sleep
+            {
+                GoSleep();  // and make it sleep if so
+            }
+        }
+    }
+
 }
 
 bool CSector::CanSleep(bool fCheckAdjacents) const
 {
 	ADDTOCALLSTACK_INTENSIVE("CSector::CanSleep");
-	if ( IsFlagSet(SECF_NoSleep) )
-		return false;	// never sleep
+    if (IsFlagSet(SECF_NoSleep) || g_Cfg._eSectorSleepFlag == SLF_NOSLEEP)
+    {
+        return false;	// never sleep
+    }
 
     if (m_Chars_Active.HasClients() > 0)
+    {
         return false;	// has at least one client, no sleep
-	if ( IsFlagSet(SECF_InstaSleep) )
-	{
-		return true;	// no active client inside, instant sleep
-	}
+    }
+
+    if (IsFlagSet(SECF_InstaSleep) || g_Cfg._eSectorSleepFlag == SLF_INSTASLEEP)    // Forced instant sleep, this may cause undefined behaviour on adjacent sectors.
+    {
+        return true;
+    }
     
     if (fCheckAdjacents)
     {
-        for (int i = 0; i < (int)DIR_QTY; ++i)// Check for adjacent's sectors sleeping allowance.
+        for (const auto &iDir : _mAdjacentSectors)
         {
-            CSector *pAdjacent = GetAdjacentSector((DIR_TYPE)i);    // set this as the last sector to avoid this code in the adjacent one and return if it can sleep or not instead of searching its adjacents.
+            CSector *pAdjacent = iDir.second;
             /*
-            * Only check if this sector exist and it's not the last checked (sectors in the hedges of the map doesn't have adjacent on those directions)
-            * && Only check if the sector isn't sleeping (IsSleeping()) and then check if CanSleep().
+            * Only check if this sector exist (sectors in the hedges of the map doesn't have adjacent on those directions)
+            * && Only check if the sector isn't sleeping.
             */
             if (!pAdjacent || pAdjacent->IsSleeping())
             {
@@ -1085,8 +1139,7 @@ bool CSector::CanSleep(bool fCheckAdjacents) const
             }
         }
     }
-	//default behaviour;
-	return ((g_World.GetCurrentTime().GetTimeRaw() - GetLastClientTime()) > g_Cfg._iSectorSleepDelay); // Sector Sleep timeout.
+	return true;
 }
 
 void CSector::SetSectorWakeStatus()
@@ -1210,20 +1263,6 @@ bool CSector::OnTick()
 		fLightChange = true;
 	}
 
-	EXC_SET_BLOCK("sector sleeping?");
-    bool fCanSleep = CanSleep(true);
-    int64 iCurTime = CServerTime::GetCurrentTime().GetTimeRaw();
-
-	// Put the sector to sleep if no clients been here in a while.
-	if (fCanSleep && (g_Cfg._iSectorSleepDelay > 0))
-	{
-        if (!IsSleeping())
-        {
-            GoSleep();
-        }
-		return true;
-	}
-
 	EXC_SET_BLOCK("sound effects");
 	// random weather noises and effects.
 	SOUND_TYPE sound = 0;
@@ -1333,7 +1372,7 @@ bool CSector::OnTick()
 	ProfileTask overheadTask(PROFILE_OVERHEAD);
 
 	EXC_SET_BLOCK("check map cache");
-	if (fCanSleep && m_iMapBlockCacheTime < iCurTime)     // Only if the sector can sleep.
+	if (m_iMapBlockCacheTime < CServerTime::GetCurrentTime().GetTimeRaw())
 	{
 		// delete the static CServerMapBlock items that have not been used recently.
 		m_iMapBlockCacheTime = CServerTime::GetCurrentTime().GetTimeRaw() + g_Cfg.m_iMapCacheTime ;

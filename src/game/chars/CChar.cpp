@@ -405,7 +405,7 @@ void CChar::ClientAttach( CClient * pClient )
 	m_pPlayer->m_timeLastUsed = g_World.GetCurrentTime().GetTimeRaw();
 
 	m_pClient = pClient;
-	GetTopSector()->ClientAttach( this );
+	//GetTopSector()->ClientAttach( this );
 	FixClimbHeight();
 }
 
@@ -2156,12 +2156,16 @@ do_default:
 					if ( !strnicmp(pszKey, "ID", 2 ) )
 					{
 						pszKey += 2;	// ID + whitspace
-						CChar * pChar = static_cast<CChar*>( CUID(Exp_GetSingle(pszKey)).CharFind() );
-						if ( !NotoSave_GetID(pChar) )
-							sVal.FormatVal( -1 );
-						else
-							sVal.FormatVal(NotoSave_GetID(pChar));
-						return true;
+						CUID dwUID = Exp_GetSingle(pszKey);
+                        int iNoto = NotoSave_GetID(dwUID);
+                        if (iNoto)
+                        {
+                            sVal.FormatVal(iNoto);
+                        }
+                        else
+                        {
+                            sVal.FormatVal(-1);
+                        }						return true;
 					}
 					if ( m_notoSaves.size() )
 					{

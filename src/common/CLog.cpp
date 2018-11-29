@@ -139,7 +139,6 @@ int CLog::EventStr( dword dwMask, lpctstr pszMsg )
 		return 0;
 
 	int iRet = 0;
-	m_mutex.lock();
 
 	try
 	{
@@ -259,7 +258,6 @@ int CLog::EventStr( dword dwMask, lpctstr pszMsg )
 		CurrentProfileData.Count(PROFILE_STAT_FAULTS, 1);
 	}
 
-	m_mutex.unlock();
 	return iRet;
 }
 

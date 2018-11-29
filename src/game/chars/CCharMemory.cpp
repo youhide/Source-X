@@ -104,7 +104,7 @@ lpctstr CChar::Guild_AbbrevBracket( MEMORY_TYPE MemType ) const
 // Memory this char has about something in the world.
 
 // Reset the check timer based on the type of memory.
-bool CChar::Memory_UpdateFlags(CItemMemory * pMemory)
+bool CChar::Memory_UpdateFlags(CItemMemory * pMemory, dword dwOldFlags)
 {
 	ADDTOCALLSTACK("CChar::Memory_UpdateFlags");
 
@@ -117,24 +117,48 @@ bool CChar::Memory_UpdateFlags(CItemMemory * pMemory)
 		return false;
 
 	int64 iCheckTime;
-	if (wMemTypes & MEMORY_IPET)
-		StatFlag_Set(STATF_PET);
+    bool fNotoUpdate = false;
+    bool fNotoUpdateAll = false;
+    if (wMemTypes & MEMORY_IPET)
+    {
+        if (!(dwOldFlags &MEMORY_IPET))
+        {
+            fNotoUpdateAll = true;  // update myself to everyone, usefull in cases like PetsInheritNotoriety is enabled (or other custom behavs).
+        }
+        StatFlag_Set(STATF_PET);
+    }
 
-	if (wMemTypes & MEMORY_FIGHT)	// update more often to check for retreat.
-		iCheckTime = 30 * MSECS_PER_SEC;
-	else if (wMemTypes & (MEMORY_IPET | MEMORY_GUARD | MEMORY_GUILD | MEMORY_TOWN))
-		iCheckTime = -1;	// never go away.
-	else if (m_pNPC)	// MEMORY_SPEAK
-		iCheckTime = 5 * 60 * MSECS_PER_SEC;
-	else
-		iCheckTime = 20 * 60 * MSECS_PER_SEC;
+    if (wMemTypes & MEMORY_FIGHT)	// update more often to check for retreat.
+    {
+        if (!(dwOldFlags & MEMORY_FIGHT))
+        {
+            fNotoUpdate = true;
+        }
+        iCheckTime = 30 * MSECS_PER_SEC;
+    }
+    else if (wMemTypes & (MEMORY_IPET | MEMORY_GUARD | MEMORY_GUILD | MEMORY_TOWN))
+    {
+        iCheckTime = -1;	// never go away.
+    }
+    else if (m_pNPC)	// MEMORY_SPEAK
+    {
+        iCheckTime = 5 * 60 * MSECS_PER_SEC;
+    }
+    else
+    {
+        iCheckTime = 20 * 60 * MSECS_PER_SEC;
+    }
 
 	pMemory->SetTimeout(iCheckTime);	// update its decay time.	
 	CChar * pCharLink = pMemory->m_uidLink.CharFind();
-	if (pCharLink)
+    if (fNotoUpdateAll) // Need myself to be announced my notoriety to everyone
+    {
+        NotoSave_Update();
+    }
+	else if (pCharLink && fNotoUpdate)  // The memory has a target char and we both bay need to refresh our notoriety.
 	{
-		pCharLink->NotoSave_Update();	// Clear my notoriety from the target.
-		NotoSave_Update();				// iAggressor is stored in the other char, so the call should be reverted.
+		pCharLink->NotoSave_Resend(NotoSave_GetID(GetUID()));
+        NotoSave_Resend(NotoSave_GetID(pCharLink->GetUID()));
 	}
 	return true;
 }
@@ -337,10 +361,15 @@ CItemMemory * CChar::Memory_AddObjTypes( CUID uid, word MemTypes )
 {
 	ADDTOCALLSTACK("CChar::Memory_AddObjTypes");
 	CItemMemory * pMemory = Memory_FindObj( uid );
-	if ( pMemory == nullptr )
-		return Memory_CreateObj( uid, MemTypes );
+    if (pMemory == nullptr)
+    {
+        return Memory_CreateObj(uid, MemTypes);
+    }
+    else
+    {
+        Memory_AddTypes(pMemory, MemTypes); // This is already done in Memory_CreateObj
+    }
 
-	Memory_AddTypes( pMemory, MemTypes );
 	NotoSave_Delete( uid.CharFind() );
 	return pMemory ;
 }

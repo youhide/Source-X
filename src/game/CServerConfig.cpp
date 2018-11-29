@@ -35,7 +35,7 @@ CServerConfig::CServerConfig()
 	m_fUseHTTP			= 2;
 	m_fUseAuthID		= true;
 	m_iMapCacheTime		= 2*60 * MSECS_PER_SEC;
-	_iSectorSleepDelay	= (1 << 10) - 1;
+    _eSectorSleepFlag   = SLF_DEFAULT;
 	m_fUseMapDiffs		= false;
 
 	m_iDebugFlags			= 0;	//DEBUGF_NPC_EMOTE
@@ -587,7 +587,7 @@ enum RC_TYPE
 	RC_SAVESECTORSPERTICK,		// m_iSaveSectorsPerTick
     RC_SAVESTEPMAXCOMPLEXITY,	// m_iSaveStepMaxComplexity
 	RC_SCPFILES,
-	RC_SECTORSLEEP,				// _iSectorSleepDelay
+	RC_SECTORSLEEPFLAG,        // _eSectorSleepFlag
 	RC_SECURE,
 	RC_SKILLPRACTICEMAX,		// m_iSkillPracticeMax
 	RC_SNOOPCRIMINAL,
@@ -830,7 +830,7 @@ const CAssocReg CServerConfig::sm_szLoadKeys[RC_QTY+1] =
 	{ "SAVESECTORSPERTICK",		{ ELEM_INT,		OFFSETOF(CServerConfig,m_iSaveSectorsPerTick),	0 }},
 	{ "SAVESTEPMAXCOMPLEXITY",	{ ELEM_INT,		OFFSETOF(CServerConfig,m_iSaveStepMaxComplexity),	0 }},
 	{ "SCPFILES",				{ ELEM_CSTRING,	OFFSETOF(CServerConfig,m_sSCPBaseDir),			0 }},
-	{ "SECTORSLEEP",			{ ELEM_INT,		OFFSETOF(CServerConfig,_iSectorSleepDelay),		0 }},
+	{ "SECTORSLEEPFLAG",		{ ELEM_INT,		OFFSETOF(CServerConfig,_eSectorSleepFlag),		0 }},
 	{ "SECURE",					{ ELEM_BOOL,	OFFSETOF(CServerConfig,m_fSecure),				0 }},
 	{ "SKILLPRACTICEMAX",		{ ELEM_INT,		OFFSETOF(CServerConfig,m_iSkillPracticeMax),	0 }},
 	{ "SNOOPCRIMINAL",			{ ELEM_INT,		OFFSETOF(CServerConfig,m_iSnoopCriminal),		0 }},
@@ -1226,9 +1226,9 @@ bool CServerConfig::r_LoadVal( CScript &s )
 			m_iSpellTimeout = s.GetArgVal() * MSECS_PER_SEC;
 			break;
 
-		case RC_SECTORSLEEP:
+		case RC_SECTORSLEEPFLAG:
 			{
-				_iSectorSleepDelay = s.GetArgVal() * MSECS_PER_SEC;
+                _eSectorSleepFlag = (SLF_TYPE)s.GetArgVal();
 			}
 			break;
 
@@ -1938,8 +1938,8 @@ bool CServerConfig::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * 
 		case RC_SAVEPERIOD:
 			sVal.FormatLLVal( m_iSavePeriod / (60*MSECS_PER_SEC));
 			break;
-		case RC_SECTORSLEEP:
-			sVal.FormatVal(_iSectorSleepDelay / MSECS_PER_SEC);
+		case RC_SECTORSLEEPFLAG:
+			sVal.FormatVal((int)_eSectorSleepFlag);
 			break;
 		case RC_SAVEBACKGROUND:
 			sVal.FormatLLVal( m_iSaveBackgroundTime / (60 * MSECS_PER_SEC));

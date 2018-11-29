@@ -99,7 +99,7 @@ NOTO_TYPE CChar::Noto_GetFlag(const CChar * pCharViewer, bool fAllowIncog, bool 
 		if (pThis->m_pNPC && pThis->NPC_PetGetOwner() && (g_Cfg.m_iPetsInheritNotoriety != 0))	// If I'm a pet and have owner I redirect noto to him.
 			pThis = pThis->NPC_PetGetOwner();
 
-		id = pThis->NotoSave_GetID(pTarget);
+		id = pThis->NotoSave_GetID(pTarget->GetUID());
 
 		if (id != -1)
 			return pThis->NotoSave_GetValue(id, fOnlyColor);
@@ -711,7 +711,7 @@ void CChar::NotoSave_Resend( int id )
 	ADDTOCALLSTACK("CChar::NotoSave_Resend()");
 	if ( m_notoSaves.empty() )
 		return;
-	if ( (int)(m_notoSaves.size()) <= id )
+	if ( (int)(m_notoSaves.size()) <= id || id == -1)
 		return;
 	NotoSaves & refNotoSave = m_notoSaves[ id ];
 	CUID uid = refNotoSave.charUID;
@@ -724,23 +724,24 @@ void CChar::NotoSave_Resend( int id )
 		Noto_GetFlag( pChar, true , true );
 }
 
-int CChar::NotoSave_GetID( CChar * pChar )
+int CChar::NotoSave_GetID(CUID dwUID)
 {
-	ADDTOCALLSTACK("CChar::NotoSave_GetID(CChar)");
-	if ( !pChar || m_notoSaves.empty() )
-		return -1;
-	if ( !m_notoSaves.empty() )
-	{
-		int id = 0;
-		for (auto it : m_notoSaves)
-		{
-			CUID uid = it.charUID;
-			if ( uid.CharFind() && uid == (dword)(pChar->GetUID()) )
-				return id;
-			++id;
-		}
-	}
-	return -1;
+    ADDTOCALLSTACK("CChar::NotoSave_GetID(CUID)");
+    if (!dwUID.IsValidUID() || m_notoSaves.empty())
+    {
+        return -1;
+    }
+    int id = 0;
+    for (auto it : m_notoSaves)
+    {
+        CUID uid = it.charUID;
+        if (uid == dwUID)
+        {
+            return id;
+        }
+        ++id;
+    }
+    return -1;
 }
 
 bool CChar::NotoSave_Delete( CChar * pChar )

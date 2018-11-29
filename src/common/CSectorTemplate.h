@@ -29,6 +29,7 @@ class CCharsActiveList : public CSObjList
 {
 private:
 	size_t m_iClients; // How many clients in this sector now?
+    CSector *_pLinkedSector;
 public:
 	static const char *m_sClassName;
 	int64 m_timeLastClient;	// age the sector based on last client here.
@@ -41,7 +42,7 @@ public:
 	void ClientAttach();
 	void ClientDetach();
 	void AddCharToSector( CChar * pChar );
-
+    void init(CSector *pLink);
 public:
 	CCharsActiveList();
 
@@ -102,7 +103,7 @@ public:
 	CCharsDisconnectList	m_Chars_Disconnect;	// dead NPCs, etc
 	CItemsList m_Items_Timer;				// CItem(s) in this CSector that need timers.
 	CItemsList m_Items_Inert;				// CItem(s) in this CSector. (no timer required)
-private:
+protected:
     std::map<DIR_TYPE, CSector*> _mAdjacentSectors;
 public:
     /*

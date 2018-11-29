@@ -22,6 +22,7 @@ CCharsActiveList::CCharsActiveList()
 {
 	m_timeLastClient = 0;
 	m_iClients = 0;
+    _pLinkedSector = nullptr;
 }
 
 void CCharsActiveList::OnRemoveObj( CSObjListRec * pObRec )
@@ -36,6 +37,10 @@ void CCharsActiveList::OnRemoveObj( CSObjListRec * pObRec )
         m_timeLastClient = g_World.GetCurrentTime().GetTimeRaw();	// mark time in case it's the last client
 	}
 	CSObjList::OnRemoveObj(pObRec);
+    if (_pLinkedSector)
+    {
+        _pLinkedSector->DelChar(pChar);
+    }
 	pChar->SetUIDContainerFlags(UID_O_DISCONNECT);
 }
 
@@ -46,10 +51,10 @@ size_t CCharsActiveList::HasClients() const
 
 void CCharsActiveList::AddCharToSector( CChar * pChar )
 {
-	ADDTOCALLSTACK("CCharsActiveList::AddCharToSector");
-	ASSERT( pChar );
-	// ASSERT( pChar->m_pt.IsValid());
-	CSObjList::InsertHead(pChar); // this also removes the Char from the old sector
+    ADDTOCALLSTACK("CCharsActiveList::AddCharToSector");
+    ASSERT( pChar );
+    // ASSERT( pChar->m_pt.IsValid());
+    CSObjList::InsertHead(pChar); // this also removes the Char from the old sector
     // UID_O_DISCONNECT is removed also by SetTopPoint. But the calls are in this order: SetTopPoint, then AddCharToSector -> CSObjList::InsertHead(pChar) ->-> OnRemoveObj
     //  (which sets UID_O_DISCONNECT), then we return in AddCharToSector, where we need to manually remove this flag, otherwise we need to call SetTopPoint() here.
     pChar->RemoveUIDFlags(UID_O_DISCONNECT);
@@ -57,6 +62,13 @@ void CCharsActiveList::AddCharToSector( CChar * pChar )
     {
         ClientAttach();
     }
+}
+
+void CCharsActiveList::init(CSector * pLink)
+{
+    ADDTOCALLSTACK("CCharsActiveList::init");
+    ASSERT(pLink);
+    _pLinkedSector = pLink;
 }
 
 void CCharsActiveList::ClientAttach()

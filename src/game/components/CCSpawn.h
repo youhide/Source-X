@@ -102,7 +102,7 @@ public:
     *
     * @return *SpawnItem
     */
-    //CItem *GetSpawnItem();
+    void SetSpawnID(CResourceIDBase rId);
 
     /**
     * @brief ID of the object to spawn.

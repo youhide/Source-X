@@ -2125,6 +2125,46 @@ void CItem::r_WriteMore1( CSString & sVal )
 			sVal = g_Cfg.ResourceGetName( CResourceID( RES_SPELL, m_itPotion.m_Type ));
 			return;
 
+        case IT_SPAWN_CHAR:
+        {
+            CCSpawn * pSpawn = static_cast<CCSpawn*>(GetComponent(COMP_SPAWN));
+            if (pSpawn)
+            {
+                sVal = g_Cfg.ResourceGetName(CResourceID(RES_CHARDEF, pSpawn->GetSpawnID()));
+            }
+            else
+            {
+                sVal.FormatVal(0);
+            }
+            break;
+        }
+        case IT_SPAWN_ITEM:
+        {
+            CCSpawn * pSpawn = static_cast<CCSpawn*>(GetComponent(COMP_SPAWN));
+            if (pSpawn)
+            {
+                sVal = g_Cfg.ResourceGetName(CResourceID(RES_ITEMDEF, pSpawn->GetSpawnID()));
+            }
+            else
+            {
+                sVal.FormatVal(0);
+            }
+            break;
+        }
+        case IT_SPAWN_CHAMPION:
+        {
+            CCSpawn * pSpawn = static_cast<CCSpawn*>(GetComponent(COMP_SPAWN));
+            if (pSpawn)
+            {
+                sVal = g_Cfg.ResourceGetName(CResourceID(RES_CHAMPION, pSpawn->GetSpawnID()));
+            }
+            else
+            {
+                sVal.FormatVal(0);
+            }
+            break;
+        }
+
 		default:
 			sVal.FormatHex( m_itNormal.m_more1 );
 			return;
