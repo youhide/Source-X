@@ -1,6 +1,7 @@
 
 #include "../common/CLog.h"
 #include "../game/CServerConfig.h"
+#include "../game/uo_files/CUOMap.h"
 #include "../sphere/threads.h"
 #include "CUOInstall.h"
 #include "common.h"
@@ -258,185 +259,213 @@ VERFILE_TYPE CUOInstall::OpenFiles( ullong ullMask )
 				// map file is handled differently
 				tchar z[256];
 
+                CUOMap *pMap = nullptr;
 				//	check for map files of custom maps
-				for ( int m = 0; m < 256; ++m )
-				{
-					if (g_MapList.IsInitialized(m) || (m == 0)) //Need at least a minimum of map0... (Ben)
-					{
-						int	index = g_MapList.m_mapnum[m];
-						if ( index == -1 )
-						{
-							g_MapList.m_maps[m] = false;
-							continue;
-						}
+                for (uint m = 0; m <= UCHAR_MAX; ++m)
+                {
+                    if (g_MapList.IsInitialized((uchar)m) || (m == 0)) //Need at least a minimum of map0... (Ben)
+                    {
+                        pMap = g_MapList.GetMap((uchar)m);
+                        if (!pMap)
+                        {
+                            continue;
+                        }
+                        uchar index = pMap->GetRealID();
+                        if (index == UCHAR_MAX)
+                        {
+                            //g_MapList.m_maps[m] = false;
+                            continue;
+                        }
 
-						if ( !m_Maps[index].IsFileOpen() )
-						{
-							sprintf(z, "map%d.mul", index);
-							OpenFile(m_Maps[index], z, OF_READ|OF_SHARE_DENY_WRITE);
+                        if (!m_Maps[index].IsFileOpen())
+                        {
+                            sprintf(z, "map%d.mul", index);
+                            OpenFile(m_Maps[index], z, OF_READ | OF_SHARE_DENY_WRITE);
 
-							if (m_Maps[index].IsFileOpen())
-							{
-								m_IsMapUopFormat[index] = false;
-							}
-							else
-							{
-								sprintf(z, "map%dLegacyMUL.uop", index);
-								OpenFile(m_Maps[index], z, OF_READ|OF_SHARE_DENY_WRITE);
+                            if (m_Maps[index].IsFileOpen())
+                            {
+                                m_IsMapUopFormat[index] = false;
+                            }
+                            else
+                            {
+                                sprintf(z, "map%dLegacyMUL.uop", index);
+                                OpenFile(m_Maps[index], z, OF_READ | OF_SHARE_DENY_WRITE);
 
-								//Should parse uop file here for faster reference later.
-								if (m_Maps[index].IsFileOpen())
-								{
-									m_IsMapUopFormat[index] = true;
+                                //Should parse uop file here for faster reference later.
+                                if (m_Maps[index].IsFileOpen())
+                                {
+                                    m_IsMapUopFormat[index] = true;
 
-									dword dwHashLo, dwHashHi, dwCompressedSize, dwHeaderLenght, dwFilesInBlock, dwTotalFiles, dwLoop;
-									uint64 qwUOPPtr;
+                                    dword dwHashLo, dwHashHi, dwCompressedSize, dwHeaderLenght, dwFilesInBlock, dwTotalFiles, dwLoop;
+                                    uint64 qwUOPPtr;
 
-									m_Maps[index].Seek( sizeof(dword)*3, SEEK_SET );
-									m_Maps[index].Read( &dwHashLo, sizeof(dword) );
-									m_Maps[index].Read( &dwHashHi, sizeof(dword) );
-									qwUOPPtr = ((uint64)dwHashHi << 32) + dwHashLo;
-									m_Maps[index].Seek( sizeof(dword), SEEK_CUR );
-									m_Maps[index].Read( &dwTotalFiles, sizeof(dword) );
-									m_Maps[index].Seek( (int)qwUOPPtr, SEEK_SET );
-									dwLoop = dwTotalFiles;
+                                    m_Maps[index].Seek(sizeof(dword) * 3, SEEK_SET);
+                                    m_Maps[index].Read(&dwHashLo, sizeof(dword));
+                                    m_Maps[index].Read(&dwHashHi, sizeof(dword));
+                                    qwUOPPtr = ((uint64)dwHashHi << 32) + dwHashLo;
+                                    m_Maps[index].Seek(sizeof(dword), SEEK_CUR);
+                                    m_Maps[index].Read(&dwTotalFiles, sizeof(dword));
+                                    m_Maps[index].Seek((int)qwUOPPtr, SEEK_SET);
+                                    dwLoop = dwTotalFiles;
 
-									while (qwUOPPtr > 0)
-									{
-										m_Maps[index].Read( &dwFilesInBlock, sizeof(dword) );
-										m_Maps[index].Read( &dwHashLo, sizeof(dword) );
-										m_Maps[index].Read( &dwHashHi, sizeof(dword) );
-										qwUOPPtr = ((uint64)dwHashHi << 32) + dwHashLo;
+                                    while (qwUOPPtr > 0)
+                                    {
+                                        m_Maps[index].Read(&dwFilesInBlock, sizeof(dword));
+                                        m_Maps[index].Read(&dwHashLo, sizeof(dword));
+                                        m_Maps[index].Read(&dwHashHi, sizeof(dword));
+                                        qwUOPPtr = ((uint64)dwHashHi << 32) + dwHashLo;
 
-										while ((dwFilesInBlock > 0)&&(dwTotalFiles > 0))
-										{
-											--dwTotalFiles;
-											--dwFilesInBlock;
+                                        while ((dwFilesInBlock > 0) && (dwTotalFiles > 0))
+                                        {
+                                            --dwTotalFiles;
+                                            --dwFilesInBlock;
 
-											m_Maps[index].Read( &dwHashLo, sizeof(dword) );
-											m_Maps[index].Read( &dwHashHi, sizeof(dword) );
-											m_Maps[index].Read( &dwHeaderLenght, sizeof(dword) );
-											m_Maps[index].Read( &dwCompressedSize, sizeof(dword) );
+                                            m_Maps[index].Read(&dwHashLo, sizeof(dword));
+                                            m_Maps[index].Read(&dwHashHi, sizeof(dword));
+                                            m_Maps[index].Read(&dwHeaderLenght, sizeof(dword));
+                                            m_Maps[index].Read(&dwCompressedSize, sizeof(dword));
 
-											MapAddress pMapAddress;
-											pMapAddress.qwAdress = (((uint64)dwHashHi << 32) + dwHashLo) + dwHeaderLenght;
+                                            MapAddress pMapAddress;
+                                            pMapAddress.qwAdress = (((uint64)dwHashHi << 32) + dwHashLo) + dwHeaderLenght;
 
-											m_Maps[index].Seek( sizeof(dword), SEEK_CUR );
-											m_Maps[index].Read( &dwHashLo, sizeof(dword) );
-											m_Maps[index].Read( &dwHashHi, sizeof(dword) );
-											uint64 qwHash = ((uint64)dwHashHi << 32) + dwHashLo;
-											m_Maps[index].Seek( sizeof(dword)+sizeof(word), SEEK_CUR );
-					
-											for (dword x = 0; x < dwLoop; ++x)
-											{
-												sprintf(z, "build/map%dlegacymul/%.8u.dat", index, x);
-												if (HashFileName(z) == qwHash)
-												{
-													pMapAddress.dwFirstBlock = x*4096;
-													pMapAddress.dwLastBlock = (x*4096)+(dwCompressedSize / 196)-1;
-													m_UopMapAddress[index][x] = pMapAddress;
-													break;
-												}
-											}
-										}
+                                            m_Maps[index].Seek(sizeof(dword), SEEK_CUR);
+                                            m_Maps[index].Read(&dwHashLo, sizeof(dword));
+                                            m_Maps[index].Read(&dwHashHi, sizeof(dword));
+                                            uint64 qwHash = ((uint64)dwHashHi << 32) + dwHashLo;
+                                            m_Maps[index].Seek(sizeof(dword) + sizeof(word), SEEK_CUR);
 
-										m_Maps[index].Seek( (int)qwUOPPtr, SEEK_SET );
-									}
-								}//End of UOP Map parsing
-								else if (index == 0) // neither file exists, map0 is required
-								{
-									bFileLoaded = false;
-									break;
-								}
-							}
-						}
-						if ( !m_Staidx[index].IsFileOpen() )
-						{
-							sprintf(z, "staidx%d.mul", index);
-							OpenFile(m_Staidx[index], z, OF_READ|OF_SHARE_DENY_WRITE);
-						}
-						if ( !m_Statics[index].IsFileOpen() )
-						{
-							sprintf(z, "statics%d.mul", index);
-							OpenFile(m_Statics[index], z, OF_READ|OF_SHARE_DENY_WRITE);
-						}
-						if ( g_Cfg.m_fUseMapDiffs )
-						{
-							if ( !m_Mapdif[index].IsFileOpen() )
-							{
-								sprintf(z, "mapdif%d.mul", index);
-								OpenFile(m_Mapdif[index], z, OF_READ|OF_SHARE_DENY_WRITE);
-							}
-							if ( !m_Mapdifl[index].IsFileOpen() )
-							{
-								sprintf(z, "mapdifl%d.mul", index);
-								OpenFile(m_Mapdifl[index], z, OF_READ|OF_SHARE_DENY_WRITE);
-							}
-							if ( !m_Stadif[index].IsFileOpen() )
-							{
-								sprintf(z, "stadif%d.mul", index);
-								OpenFile(m_Stadif[index], z, OF_READ|OF_SHARE_DENY_WRITE);
-							}
-							if ( !m_Stadifi[index].IsFileOpen() )
-							{
-								sprintf(z, "stadifi%d.mul", index);
-								OpenFile(m_Stadifi[index], z, OF_READ|OF_SHARE_DENY_WRITE);
-							}
-							if ( !m_Stadifl[index].IsFileOpen() )
-							{
-								sprintf(z, "stadifl%d.mul", index);
-								OpenFile(m_Stadifl[index], z, OF_READ|OF_SHARE_DENY_WRITE);
-							}
-						}
+                                            for (dword x = 0; x < dwLoop; ++x)
+                                            {
+                                                sprintf(z, "build/map%dlegacymul/%.8u.dat", index, x);
+                                                if (HashFileName(z) == qwHash)
+                                                {
+                                                    pMapAddress.dwFirstBlock = x * 4096;
+                                                    pMapAddress.dwLastBlock = (x * 4096) + (dwCompressedSize / 196) - 1;
+                                                    m_UopMapAddress[index][x] = pMapAddress;
+                                                    break;
+                                                }
+                                            }
+                                        }
 
-						//	if any of the map files are not available, mark map as unavailable
-						//	mapdif and stadif files are not required.
-						if ( !m_Maps[index].IsFileOpen() ||
-							 !m_Staidx[index].IsFileOpen() ||
-							 !m_Statics[index].IsFileOpen() )
-						{
-							if ( m_Maps[index].IsFileOpen() )
+                                        m_Maps[index].Seek((int)qwUOPPtr, SEEK_SET);
+                                    }
+                                }//End of UOP Map parsing
+                                else if (index == 0) // neither file exists, map0 is required
+                                {
+                                    bFileLoaded = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!m_Staidx[index].IsFileOpen())
+                        {
+                            sprintf(z, "staidx%d.mul", index);
+                            OpenFile(m_Staidx[index], z, OF_READ | OF_SHARE_DENY_WRITE);
+                        }
+                        if (!m_Statics[index].IsFileOpen())
+                        {
+                            sprintf(z, "statics%d.mul", index);
+                            OpenFile(m_Statics[index], z, OF_READ | OF_SHARE_DENY_WRITE);
+                        }
+                        if (g_Cfg.m_fUseMapDiffs)
+                        {
+                            if (!m_Mapdif[index].IsFileOpen())
+                            {
+                                sprintf(z, "mapdif%d.mul", index);
+                                OpenFile(m_Mapdif[index], z, OF_READ | OF_SHARE_DENY_WRITE);
+                            }
+                            if (!m_Mapdifl[index].IsFileOpen())
+                            {
+                                sprintf(z, "mapdifl%d.mul", index);
+                                OpenFile(m_Mapdifl[index], z, OF_READ | OF_SHARE_DENY_WRITE);
+                            }
+                            if (!m_Stadif[index].IsFileOpen())
+                            {
+                                sprintf(z, "stadif%d.mul", index);
+                                OpenFile(m_Stadif[index], z, OF_READ | OF_SHARE_DENY_WRITE);
+                            }
+                            if (!m_Stadifi[index].IsFileOpen())
+                            {
+                                sprintf(z, "stadifi%d.mul", index);
+                                OpenFile(m_Stadifi[index], z, OF_READ | OF_SHARE_DENY_WRITE);
+                            }
+                            if (!m_Stadifl[index].IsFileOpen())
+                            {
+                                sprintf(z, "stadifl%d.mul", index);
+                                OpenFile(m_Stadifl[index], z, OF_READ | OF_SHARE_DENY_WRITE);
+                            }
+                        }
+
+                        //	if any of the map files are not available, mark map as unavailable
+                        //	mapdif and stadif files are not required.
+                        if (!m_Maps[index].IsFileOpen() ||
+                            !m_Staidx[index].IsFileOpen() ||
+                            !m_Statics[index].IsFileOpen())
+                        {
+                            if (m_Maps[index].IsFileOpen())
+                            {
                                 m_Maps[index].Close();
-							if ( m_Staidx[index].IsFileOpen() )
+                            }
+                            if (m_Staidx[index].IsFileOpen())
+                            {
                                 m_Staidx[index].Close();
-							if ( m_Statics[index].IsFileOpen() )
+                            }
+                            if (m_Statics[index].IsFileOpen())
+                            {
                                 m_Statics[index].Close();
-						
-							if (index == 1 && m_Maps[0].IsFileOpen())
-								g_MapList.m_mapnum[m] = 0;
-							else
-								g_MapList.m_mapid[m] = 0;
-						}
+                            }
 
-						//	mapdif and mapdifl are not required, but if one exists so should
-						//	the other
-						if ( m_Mapdif[index].IsFileOpen() != m_Mapdifl[index].IsFileOpen() )
-						{
-							if ( m_Mapdif[index].IsFileOpen() )
+                            if (index == 1 && m_Maps[0].IsFileOpen())
+                            {
+                                pMap->SetRealID(0);
+                            }
+                            else
+                            {
+                                pMap->SetMapID(0);
+                            }
+                        }
+
+                        //	mapdif and mapdifl are not required, but if one exists so should
+                        //	the other
+                        if (m_Mapdif[index].IsFileOpen() != m_Mapdifl[index].IsFileOpen())
+                        {
+                            if (m_Mapdif[index].IsFileOpen())
+                            {
                                 m_Mapdif[index].Close();
-							if ( m_Mapdifl[index].IsFileOpen() )
+                            }
+                            if (m_Mapdifl[index].IsFileOpen())
+                            {
                                 m_Mapdifl[index].Close();
-						}
+                            }
+                        }
 
-						//	if one of the stadif files exissts, so should the others
-						if ( m_Stadif[index].IsFileOpen() != m_Stadifi[index].IsFileOpen() ||
-							 m_Stadif[index].IsFileOpen() != m_Stadifl[index].IsFileOpen() )
-						{
-							if ( m_Stadif[index].IsFileOpen() )	
+                        //	if one of the stadif files exissts, so should the others
+                        if (m_Stadif[index].IsFileOpen() != m_Stadifi[index].IsFileOpen() ||
+                            m_Stadif[index].IsFileOpen() != m_Stadifl[index].IsFileOpen())
+                        {
+                            if (m_Stadif[index].IsFileOpen())
+                            {
                                 m_Stadif[index].Close();
-							if ( m_Stadifi[index].IsFileOpen() )
+                            }
+                            if (m_Stadifi[index].IsFileOpen())
+                            {
                                 m_Stadifi[index].Close();
-							if ( m_Stadifl[index].IsFileOpen() )
+                            }
+                            if (m_Stadifl[index].IsFileOpen())
+                            {
                                 m_Stadifl[index].Close();
-						}
-					}
-				}
+                            }
+                        }
+                    }
+                }
 				break;
 		}
 
 		// stop if we hit a failure
-		if (bFileLoaded == false)
-			break;
+        if (bFileLoaded == false)
+        {
+            break;
+        }
 	}
 
     // --
@@ -455,30 +484,50 @@ VERFILE_TYPE CUOInstall::OpenFiles( ullong ullMask )
 			continue;
 
 		bool bSup = false;
-		if ( j > 5 )	// SA+
-			bSup = ( g_MapList.m_maps[j - 1] );
-		else
-			bSup = ( g_MapList.m_maps[j] );
+        if (j > 5)	// SA+
+        {
+            bSup = (g_MapList.GetMap(j - 1) != nullptr);
+        }
+        else
+        {
+            bSup = (g_MapList.GetMap(j) != nullptr);
+        }
 
 		if ( bSup )
 		{
 			switch ( j )
 			{
-				case 0: sprintf(z1, "Felucca (%d)", j);			break;
-				case 1: sprintf(z1, "Trammel (%d)", j);			break;
-				case 2: sprintf(z1, "Ilshenar (%d)", j);		break;
-				case 3: sprintf(z1, "Malas (%d)", j);			break;
-				case 4: sprintf(z1, "Tokuno Islands (%d)", j);	break;
-				case 6: sprintf(z1, "Ter Mur (%d)", j-1);		break;
+				case 0:
+                    sprintf(z1, "Felucca (%d)", j);
+                    break;
+				case 1:
+                    sprintf(z1, "Trammel (%d)", j);
+                    break;
+				case 2:
+                    sprintf(z1, "Ilshenar (%d)", j);
+                    break;
+				case 3:
+                    sprintf(z1, "Malas (%d)", j);
+                    break;
+				case 4:
+                    sprintf(z1, "Tokuno Islands (%d)", j);
+                    break;
+				case 6:
+                    sprintf(z1, "Ter Mur (%d)", j-1);
+                    break;
 			}
-			if ( *z )
-				strcat(z, ", ");
+            if (*z)
+            {
+                strcat(z, ", ");
+            }
 			strcat(z, z1);
 		}
 	}
 
-	if ( *z )
-		g_Log.Event(LOGM_INIT, "Expansion maps supported: %s\n", z);
+    if (*z)
+    {
+        g_Log.Event(LOGM_INIT, "Expansion maps supported: %s\n", z);
+    }
 
     // --
 

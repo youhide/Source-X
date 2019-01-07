@@ -6,6 +6,7 @@
 #include "../../common/CUIDExtra.h"
 #include "../../network/receive.h"
 #include "../clients/CClient.h"
+#include "../uo_files/CUOMap.h"
 #include "../CPathFinder.h"
 #include "../triggers.h"
 #include "CCharNPC.h"
@@ -2280,6 +2281,7 @@ void CChar::NPC_Pathfinding()
 	int			iInt = ( NPC_GetAiFlags() & NPC_AI_ALWAYSINT ) ? 300 : Stat_GetAdjusted(STAT_INT);
 	CPointMap	pTarg = m_Act_p;
 	int			dist = local.GetDist(pTarg);
+    CUOMap *pMap = g_MapList.GetMap(GetTopPoint().m_map);
 
 	//	do we really need to find the path?
 	if ( iInt < 75 ) return;					// too dumb
@@ -2292,8 +2294,8 @@ void CChar::NPC_Pathfinding()
 												// pathfinding is buggy near the edges of the map,
 												// so do not use it there
 	if (( local.m_x <= PATH_SIZE/2 ) || ( local.m_y <= PATH_SIZE/2 ) ||
-		( local.m_x >= ( g_MapList.GetX(local.m_map) - PATH_SIZE/2) ) ||
-		( local.m_y >= ( g_MapList.GetY(local.m_map) - PATH_SIZE/2) ))
+		( local.m_x >= ( pMap->GetSizeX() - PATH_SIZE/2) ) ||
+		( local.m_y >= ( pMap->GetSizeY() - PATH_SIZE/2) ))
 		return;
 												// need 300 int at least to pathfind each step, but always
 												// search if this is a first step

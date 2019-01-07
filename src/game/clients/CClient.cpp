@@ -8,6 +8,7 @@
 #include "../../sphere/ProfileTask.h"
 #include "../chars/CChar.h"
 #include "../components/CCSpawn.h"
+#include "../uo_files/CUOMap.h"
 #include "../spheresvr.h"
 #include "../triggers.h"
 #include "CClient.h"
@@ -958,28 +959,40 @@ bool CClient::r_Verb( CScript & s, CTextConsole * pSrc ) // Execute command from
 			{
 				//	Loop the world searching for bad spawns
 				bool fFound = false;
-				for ( int m = 0; m < 256 && !fFound; ++m )
+                CUOMap *pMap = nullptr;
+                CSector *pSector = nullptr;
+                CCSpawn *pSpawn;
+                short iSizeX = 0;
+                short iSizeY = 0;
+				for ( uchar m = 0; m < (uchar)256 && !fFound; ++m )
 				{
-					if ( !g_MapList.m_maps[m] )
-						continue;
+                    pMap = g_MapList.GetMap(m);
+                    if (!pMap)
+                    {
+                        continue;
+                    }
 
-					for ( int d = 0; d < g_MapList.GetSectorQty(m) && !fFound; ++d )
-					{
-						CSector	*pSector = g_World.GetSector(m, d);
-						if ( !pSector )
-							continue;
+                    iSizeX = pMap->GetSectorCols();
+                    iSizeY = pMap->GetSectorRows();
+                    for (short iCoordX = 0; iCoordX < iSizeX; ++iCoordX)
+                    {
+                        for (short iCoordY = 0; iCoordY < iSizeY; ++iCoordY)
+                        {
+                            pSector = pMap->GetSector(iCoordX, iCoordY);
+                            if (!pSector)
+                            {
+                                continue;
+                            }
 
-						CItem *pNext;
-						CItem *pItem = static_cast <CItem*>(pSector->m_Items_Timer.GetHead());
-						for ( ; pItem != nullptr && !fFound; pItem = pNext )
-						{
-							pNext = pItem->GetNext();
+                            CItem	*pNext;
+                            CItem	*pItem = static_cast <CItem*>(pSector->m_Items_Timer.GetHead());
+                            for (; pItem != nullptr && !fFound; pItem = pNext)
+                            {
+                                pNext = pItem->GetNext();
 
-							if ( pItem->IsType(IT_SPAWN_ITEM) || pItem->IsType(IT_SPAWN_CHAR) )
-							{
-                                CCSpawn *pSpawn = pItem->GetSpawn();
-                                if (pSpawn)
+                                if (pItem->IsType(IT_SPAWN_ITEM) || pItem->IsType(IT_SPAWN_CHAR))
                                 {
+                                    pSpawn = pItem->GetSpawn();
                                     const CResourceDef *pDef = pSpawn->FixDef();
                                     if (!pDef)
                                     {
@@ -991,8 +1004,8 @@ bool CClient::r_Verb( CScript & s, CTextConsole * pSrc ) // Execute command from
                                         fFound = true;
                                     }
                                 }
-							}
-						}
+                            }
+                        }
 					}
 				}
 				if ( ! fFound )

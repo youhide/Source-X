@@ -8,17 +8,19 @@
 
 #include "../common/CSectorTemplate.h"
 #include "../common/CScriptObj.h"
+#include "../../game/components/CCTimedObject.h"
 #include "CSectorEnviron.h"
 
 
 class CChar;
 class CItemStone;
+class CUOMap;
 
 class CSector : public CScriptObj, public CSectorBase, public CCTimedObject	// square region of the world.
 {
 	// A square region of the world. ex: MAP0.MUL Dungeon Sectors are 256 by 256 meters
 #define SECTOR_TICK_PERIOD (TICKS_PER_SEC / 2) // after how much ticks do we start a pulse.
-
+    friend class CUOMap;
 public:
 	static const char *m_sClassName;
 	static lpctstr const sm_szVerbKeys[];
@@ -32,6 +34,16 @@ private:
 	byte m_ColdChance;		// Will be snow if rain chance success.
 	byte m_ListenItems;		// Items on the ground that listen ?
 
+    short _iPointX;
+    short _iPointY;
+protected:
+    std::map<DIR_TYPE, CSector*> _mAdjacentSectors;
+    /*
+    * @brief Asign it's adjacent's sectors
+    */
+    void SetAdjacentSectors();
+    CSector *GetAdjacentSector(DIR_TYPE dir) const;
+
 private:
 	WEATHER_TYPE GetWeatherCalc() const;
 	byte GetLightCalc( bool fQuickSet ) const;
@@ -40,10 +52,9 @@ private:
 	void SetDefaultWeatherChance();
 
 public:
-	CSector();
+    CSector(CUOMap * pMap, short x, short y, int index);
 	~CSector();
-
-private:
+    void init();
 	CSector(const CSector& copy);
 	CSector& operator=(const CSector& other);
 
@@ -53,6 +64,8 @@ public:
     {
         return false;   // Sectors should never be deleted in runtime.
     }
+    short GetPointX() const;
+    short GetPointY() const;
 
 	// Time
 	int GetLocalTime() const;

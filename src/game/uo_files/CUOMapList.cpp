@@ -2,21 +2,25 @@
 #include "../../common/CUOInstall.h"
 #include "../CServerConfig.h"
 #include "CUOMapList.h"
+#include "CUOMap.h"
 
 // CUOMapList:: Constructors, Destructor, Asign operator.
+#define UO_MAP_FILES (uchar)5   // Amount of map files
 
 CUOMapList::CUOMapList()
 {
-    memset(m_mapsinitalized, 0, sizeof(m_mapsinitalized));
-    memset(m_sizex, 0, sizeof(m_sizex));
-    memset(m_sizey, 0, sizeof(m_sizey));
-    memset(m_maps, true, sizeof(m_maps));
-    memset(m_mapnum, -1, sizeof(m_mapnum));
-    memset(m_mapid, -1, sizeof(m_mapid));
-    memset(m_sectorsize, 0, sizeof(m_sectorsize));
+    memset(m_mapsinitalized, 0, sizeof(UCHAR_MAX));
+    memset(m_sizex, 0, sizeof(UCHAR_MAX));
+    memset(m_sizey, 0, sizeof(UCHAR_MAX));
+    memset(m_mapnum, -1, sizeof(UCHAR_MAX));
+    memset(m_mapid, -1, sizeof(UCHAR_MAX));
+    memset(m_sectorsize, 0, sizeof(UCHAR_MAX));
+    //_mMaps = new CUOMap*[UCHAR_MAX];
 
-    for (int i = 0; i < 6; i++)
+    for (uchar i = 0; i <= UO_MAP_FILES; ++i)
+    {
         Load(i, 0, 0, 0, i, i);
+    }
 
     m_pMapDiffCollection = nullptr;
 }
@@ -25,23 +29,25 @@ CUOMapList::CUOMapList()
 
 void CUOMapList::Init()
 {
-    for ( int i = 0; i < 256; i++ )
+    for ( uchar i = 0; i < UCHAR_MAX; i++ )
     {
-        if ( m_maps[i] )	// map marked as available. check whatever it's possible
+        if ( _mMaps[i] )	// map marked as available. check whatever it's possible
         {
             //	check coordinates first
-            if ( m_mapnum[i] == -1 )
-                m_maps[i] = false;
-            else if ( m_sizex[i] == 0 || m_sizey[i] == 0 || m_sectorsize[i] == 0 )
-                m_maps[i] = DetectMapSize(i);
+            if (m_mapnum[i] == -1)
+            {
+                continue;
+            }
         }
     }
 
     if ( g_Cfg.m_fUseMapDiffs && !m_pMapDiffCollection )
         m_pMapDiffCollection = new CServerMapDiffCollection();
+
+
 }
 
-bool CUOMapList::Load(int map, char *args)
+bool CUOMapList::Load(uchar map, char *args)
 {
     if (( map < 0 ) || ( map > 255 ))
     {
@@ -55,16 +61,27 @@ bool CUOMapList::Load(int map, char *args)
 
         if ( iCount <= 0 )	// simple MAPX= same as disabling the map
         {
-            m_maps[map] = false;
+            _mMaps[map] = nullptr;
         }
         else
         {
-            int	maxx = 0, maxy = 0, sectorsize = 0, realmapnum = 0, mapid = -1;
-            if ( ppCmd[0] ) maxx = ATOI(ppCmd[0]);
-            if ( ppCmd[1] ) maxy = ATOI(ppCmd[1]);
-            if ( ppCmd[2] ) sectorsize = ATOI(ppCmd[2]);
-            if ( ppCmd[3] ) realmapnum = ATOI(ppCmd[3]);
-            if ( ppCmd[4] ) mapid = ATOI(ppCmd[4]);
+            short	maxx = 0, maxy = 0, sectorsize = 0;
+            uchar realmapnum = 0, mapid = UCHAR_MAX;
+            switch (iCount)
+            {
+                case 5:
+                    mapid = (uchar)ATOI(ppCmd[4]);
+                case 4:
+                    realmapnum = (uchar)ATOI(ppCmd[3]);
+                case 3:
+                    sectorsize = (short)ATOI(ppCmd[2]);
+                case 2:
+                    maxy = (short)ATOI(ppCmd[1]);
+                case 1:
+                    maxx = (short)ATOI(ppCmd[0]);
+                default:
+                    break;
+            }
 
             // zero settings of anything except the real map num means
             if ( maxx )					// skipping the argument
@@ -97,17 +114,19 @@ bool CUOMapList::Load(int map, char *args)
             }
             if ( realmapnum >= 0 )
                 m_mapnum[map] = realmapnum;
-            if ( mapid >= 0 )
+            if ( mapid == UCHAR_MAX)
                 m_mapid[map] = mapid;
             else
                 m_mapid[map] = map;
         }
+        _mMaps[map] = new CUOMap(map, m_mapnum[map], m_sizex[map], m_sizey[map], m_sectorsize[map]);
+        _mMaps[map]->init();
         m_mapsinitalized[map] = true;
     }
     return true;
 }
 
-bool CUOMapList::Load(int map, int maxx, int maxy, int sectorsize, int realmapnum, int mapid)
+bool CUOMapList::Load(uchar map, short maxx, short maxy, short sectorsize, uchar realmapnum, uchar mapid)
 {
     m_sizex[map] = maxx;
     m_sizey[map] = maxy;
@@ -121,10 +140,10 @@ bool CUOMapList::Load(int map, int maxx, int maxy, int sectorsize, int realmapnu
 
 bool CUOMapList::DetectMapSize(int map)
 {
-    if ( m_maps[map] == false )
+    if (!_mMaps[(uchar)map])
         return false;
 
-    int	index = m_mapnum[map];
+    int	index = m_mapnum[(uchar)map];
     if ( index < 0 )
         return false;
 
@@ -192,65 +211,37 @@ bool CUOMapList::DetectMapSize(int map)
     return (m_sizex[map] > 0 && m_sizey[map] > 0 && m_sectorsize[map] > 0);
 }
 
+void CUOMapList::Close()
+{
+    CUOMap *pMap = nullptr;
+    for (uint iMap = 0; iMap < 255; ++iMap)
+    {
+        pMap = _mMaps[(uchar)iMap];
+        if (!pMap)
+        {
+            continue;
+        }
+        delete pMap;
+        _mMaps[(uchar)iMap] = nullptr;
+    }
+
+    if (m_pMapDiffCollection != nullptr)
+    {
+        delete m_pMapDiffCollection;
+        m_pMapDiffCollection = nullptr;
+    }
+}
+
 bool CUOMapList::IsMapSupported(int map) const
 {
     if (( map < 0 ) || ( map > 255 ))
         return false;
-    return( m_maps[map] );
+    return( _mMaps.at((uchar)map) != nullptr);
 }
 
-int CUOMapList::GetCenterX(int map) const
+CUOMap * CUOMapList::GetMap(uchar iMap)
 {
-    if (( map < 0 ) || ( map > 255 ))
-        return 0;
-    return (m_sizex[map]/2);
-}
-
-int CUOMapList::GetCenterY(int map) const
-{
-    if (( map < 0 ) || ( map > 255 ))
-        return 0;
-    return (m_sizey[map]/2);
-}
-
-int CUOMapList::GetSectorCols(int map) const
-{
-    if (( map < 0 ) || ( map > 255 ))
-        return 0;
-    return (m_sizex[map] / GetSectorSize(map));
-}
-
-int CUOMapList::GetSectorQty(int map) const
-{
-    return ( GetSectorCols(map) * GetSectorRows(map) );
-}
-
-int CUOMapList::GetX(int map) const
-{
-    if (( map < 0 ) || ( map > 255 ))
-        return 0;
-    return m_sizex[map];
-}
-
-int CUOMapList::GetSectorRows(int map) const
-{
-    if (( map < 0 ) || ( map > 255 ))
-        return 0;
-    return (m_sizey[map] / GetSectorSize(map));
-}
-
-int CUOMapList::GetSectorSize(int map) const
-{
-    if (( map < 0 ) || ( map > 255 ))
-        return 0;
-    return m_sectorsize[map];
-}
-
-int CUOMapList::GetY(int map) const
-{
-    if (( map < 0 ) || ( map > 255 ))
-        return 0;
-    return m_sizey[map];
+    return _mMaps[iMap];
 }
 
 bool CUOMapList::IsInitialized(int map) const

@@ -6,6 +6,7 @@
 #ifndef _INC_CUOMAPLIST_H
 #define _INC_CUOMAPLIST_H
 
+#include <map>
 #include "../../common/common.h"
 
 // All these structures must be byte packed.
@@ -19,17 +20,20 @@
 #endif
 
 
+class CUOMap;
 class CServerMapDiffCollection;
 
 extern class CUOMapList
 {
+private:
+    std::map<uchar,CUOMap*> _mMaps;
+    short m_sizex[UCHAR_MAX];
+    short m_sizey[UCHAR_MAX];
+    short m_sectorsize[UCHAR_MAX];
+    //bool m_maps[UCHAR_MAX];		// list of supported maps
+    uchar m_mapnum[UCHAR_MAX];		// real map number (0 for 0 and 1, 2 for 2, and so on) - file name
+    uchar m_mapid[UCHAR_MAX];		// map id used by the client
 public:
-    int m_sizex[256];
-    int m_sizey[256];
-    int m_sectorsize[256];
-    bool m_maps[256];		// list of supported maps
-    int m_mapnum[256];		// real map number (0 for 0 and 1, 2 for 2, and so on) - file name
-    int m_mapid[256];		// map id used by the client
     CServerMapDiffCollection * m_pMapDiffCollection;
 
 protected:
@@ -50,25 +54,20 @@ public:
      */
     ///@{
     void Init();
-    bool Load(int map, char *args);
-    bool Load(int map, int maxx, int maxy, int sectorsize, int realmapnum, int mapid);
+    bool Load(uchar iMap, char *args);
+    bool Load(uchar iMap, short maxx, short maxy, short sectorsize, uchar realmapnum, uchar mapid);
     ///@}
     /** @name Operations:
      */
     ///@{
 protected:
-    bool DetectMapSize(int map);
+    bool DetectMapSize(int iMap);
+    friend class CWorld;
+    void Close();
 public:
-    bool IsMapSupported(int map) const;
-    int GetCenterX(int map) const;
-    int GetCenterY(int map) const;
-    int GetSectorCols(int map) const;
-    int GetSectorQty(int map) const;
-    int GetX(int map) const;
-    int GetSectorRows(int map) const;
-    int GetSectorSize(int map) const;
-    int GetY(int map) const;
-    bool IsInitialized(int map) const;
+    bool IsMapSupported(int iMap) const;
+    CUOMap* GetMap(uchar iMap);
+    bool IsInitialized(int iMap) const;
     ///@}
 } g_MapList;
 

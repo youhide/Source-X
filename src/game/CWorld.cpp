@@ -7,6 +7,7 @@
 #include "../sphere/ProfileTask.h"
 #include "../common/CLog.h"
 #include "chars/CChar.h"
+#include "uo_files/CUOMap.h"
 #include "clients/CClient.h"
 #include "clients/CGMPage.h"
 #include "chars/CChar.h"
@@ -825,54 +826,14 @@ void CWorld::Init()
 {
 	EXC_TRY("Init");
 
-	if ( m_Sectors )	//	disable changes on-a-fly
+	if ( m_SectorsQty )	//	disable changes on-a-fly
 		return;
 
 	g_MapList.Init();
-	if ( g_MapList.m_pMapDiffCollection )
-		g_MapList.m_pMapDiffCollection->Init();
-
-	//	initialize all sectors
-	int	sectors = 0;
-	int m = 0;
-	for ( m = 0; m < 256; ++m )
-	{
-		if ( !g_MapList.m_maps[m] )
-			continue;
-		sectors += g_MapList.GetSectorQty(m);
-	}
-
-	m_Sectors = new CSector*[sectors];
-	TemporaryString tsZ;
-	TemporaryString tsZ1;
-	tchar* z = static_cast<tchar *>(tsZ);
-	tchar* z1 = static_cast<tchar *>(tsZ1);
-
-	for ( m = 0; m < 256; ++m )
-	{
-		if ( !g_MapList.m_maps[m] )
-			continue;
-
-		sprintf(z1, " map%d=%d", m, g_MapList.GetSectorQty(m));
-		strcat(z, z1);
-		for ( int s = 0; s < g_MapList.GetSectorQty(m); ++s )
-		{
-			CSector	*pSector = new CSector;
-			ASSERT(pSector);
-			pSector->Init(s, m);
-			m_Sectors[m_SectorsQty++] = pSector;
-		}
-	}
-    for (uint s = 0; s < m_SectorsQty; ++s)
+    if (g_MapList.m_pMapDiffCollection)
     {
-        CSector *pSector = m_Sectors[s];
-        if (pSector)
-        {
-            pSector->SetAdjacentSectors();
-        }
+        g_MapList.m_pMapDiffCollection->Init();
     }
-    g_Log.Event(LOGM_INIT, "Allocated map sectors:%s\n", static_cast<lpctstr>(z));
-	ASSERT(m_SectorsQty);
 
 	EXC_CATCH;
 }
@@ -1392,42 +1353,52 @@ void CWorld::SaveStatics()
 #endif
 
 		//	loop through all sectors and save static items
-		for ( int m = 0; m < 256; ++m )
+        CUOMap *pMap = nullptr;
+        CSector *pSector = nullptr;
+        CItem *pNext = nullptr;
+        CItem *pItem = nullptr;
+		for ( uchar m = 0; m < (uchar)256; ++m )
 		{
-			if ( !g_MapList.m_maps[m] )
+            pMap = g_MapList.GetMap(m);
+            if (!pMap)
+            {
                 continue;
+            }
+            for (uint16 iCoordX = 0; iCoordX < pMap->GetSizeX(); ++iCoordX)
+            {
+                for (uint16 iCoordY = 0; iCoordY < pMap->GetSizeY(); ++iCoordY)
+                {
+                    pSector = pMap->GetSector(iCoordX, iCoordY);
 
-			for ( int d = 0; d < g_MapList.GetSectorQty(m); ++d )
-			{
-				CItem	*pNext, *pItem;
-				CSector	*pSector = GetSector(m, d);
+                    if (!pSector)
+                    {
+                        continue;
+                    }
 
-				if ( !pSector )
-                    continue;
+                    pItem = static_cast <CItem*>(pSector->m_Items_Inert.GetHead());
+                    for (; pItem != nullptr; pItem = pNext)
+                    {
+                        pNext = pItem->GetNext();
+                        if (pItem->IsTypeMulti())
+                            continue;
+                        if (!pItem->IsAttr(ATTR_STATIC))
+                            continue;
 
-				pItem = static_cast <CItem*>(pSector->m_Items_Inert.GetHead());
-				for ( ; pItem != nullptr; pItem = pNext )
-				{
-					pNext = pItem->GetNext();
-                    if (pItem->IsTypeMulti())
-						continue;
-					if ( !pItem->IsAttr(ATTR_STATIC) )
-						continue;
+                        pItem->r_WriteSafe(m_FileStatics);
+                    }
 
-					pItem->r_WriteSafe(m_FileStatics);
-				}
+                    pItem = static_cast <CItem*>(pSector->m_Items_Timer.GetHead());
+                    for (; pItem != nullptr; pItem = pNext)
+                    {
+                        pNext = pItem->GetNext();
+                        if (pItem->IsTypeMulti())
+                            continue;
+                        if (!pItem->IsAttr(ATTR_STATIC))
+                            continue;
 
-				pItem = static_cast <CItem*>(pSector->m_Items_Timer.GetHead());
-				for ( ; pItem != nullptr; pItem = pNext )
-				{
-					pNext = pItem->GetNext();
-					if ( pItem->IsTypeMulti() )
-						continue;
-					if ( !pItem->IsAttr(ATTR_STATIC) )
-						continue;
-
-					pItem->r_WriteSafe(m_FileStatics);
-				}
+                        pItem->r_WriteSafe(m_FileStatics);
+                    }
+                }
 			}
 		}
 
@@ -1785,7 +1756,7 @@ bool CWorld::LoadWorld() // Load world from script
 		m_Parties.Clear();
 		m_GMPages.Clear();
 
-		if ( m_Sectors )
+		if (m_SectorsQty)
 		{
 			for ( uint s = 0; s < m_SectorsQty; ++s )
 			{
@@ -2063,17 +2034,28 @@ void CWorld::RespawnDeadNPCs()
 {
 	ADDTOCALLSTACK("CWorld::RespawnDeadNPCs");
 	// Respawn dead story NPC's
+
 	g_Serv.SetServerMode(SERVMODE_RestockAll);
-	for ( int m = 0; m < 256; ++m )
+    CUOMap *pMap = nullptr;
+
+	for ( uchar m = 0; m < (uchar)256; ++m )
 	{
-		if ( !g_MapList.m_maps[m] ) continue;
+        pMap = g_MapList.GetMap(m);
+        if (!pMap)
+        {
+            continue;
+        }
 
-		for ( int s = 0; s < g_MapList.GetSectorQty(m); ++s )
-		{
-			CSector	*pSector = GetSector(m, s);
-
-			if ( pSector )
-				pSector->RespawnDeadNPCs();
+        for (uint16 iCoordX = 0; iCoordX < pMap->GetSizeX(); ++iCoordX)
+        {
+            for (uint16 iCoordY = 0; iCoordY < pMap->GetSizeY(); ++iCoordY)
+            {
+                CSector	*pSector = pMap->GetSector(iCoordX, iCoordY);
+                if (pSector)
+                {
+                    pSector->RespawnDeadNPCs();
+                }
+            }
 		}
 	}
 	g_Serv.SetServerMode(SERVMODE_Run);
@@ -2100,16 +2082,25 @@ void CWorld::Restock()
 		}
 	}
 
-	for ( int m = 0; m < 256; ++m )
-	{
-		if ( !g_MapList.m_maps[m] )
-			continue;
+    CUOMap *pMap = nullptr;
+    for (uchar m = 0; m < (uchar)256; ++m)
+    {
+        pMap = g_MapList.GetMap(m);
+        if (!pMap)
+        {
+            continue;
+        }
 
-		for ( int s = 0; s < g_MapList.GetSectorQty(m); ++s )
-		{
-			CSector	*pSector = GetSector(m, s);
-			if ( pSector != nullptr )
-				pSector->Restock();
+        for (uint16 iCoordX = 0; iCoordX < pMap->GetSizeX(); ++iCoordX)
+        {
+            for (uint16 iCoordY = 0; iCoordY < pMap->GetSizeY(); ++iCoordY)
+            {
+                CSector	*pSector = pMap->GetSector(iCoordX, iCoordY);
+                if (pSector != nullptr)
+                {
+                    pSector->Restock();
+                }
+            }
 		}
 	}
 
@@ -2137,35 +2128,7 @@ void CWorld::Close()
         pClient->CharDisconnect();
     }
 
-	if ( m_Sectors != nullptr )
-	{
-		//	free memory allocated by sectors
-		for ( uint s = 0; s < m_SectorsQty; ++s )
-		{
-			// delete everything in sector
-			m_Sectors[s]->Close();
-		}
-		// do this in two loops because destructors of items
-		// may access server sectors
-		for ( uint s = 0; s < m_SectorsQty; ++s )
-		{
-			// delete the sectors
-			delete m_Sectors[s];
-			m_Sectors[s] = nullptr;
-		}
-
-		delete[] m_Sectors;
-		m_Sectors = nullptr;
-		m_SectorsQty = 0;
-	}
-
-	memset(g_MapList.m_maps, 0, sizeof(g_MapList.m_maps));
-
-	if ( g_MapList.m_pMapDiffCollection != nullptr )
-	{
-		delete g_MapList.m_pMapDiffCollection;
-		g_MapList.m_pMapDiffCollection = nullptr;
-	}
+    g_MapList.Close();
 
 	CloseAllUIDs();
 
@@ -2736,37 +2699,4 @@ void CWorld::OnTick()
 	}
 
     EXC_CATCH;
-}
-
-CSector *CWorld::GetSector(int map, int i) const	// gets sector # from one map
-{
-	ADDTOCALLSTACK_INTENSIVE("CWorld::GetSector");
-
-	// if the map is not supported, return empty sector
-	if (( map < 0 ) || ( map >= 256 ) || !g_MapList.m_maps[map] )
-		return nullptr;
-
-	if ( i >= g_MapList.GetSectorQty(map) )
-	{
-		g_Log.EventError("Unsupported sector #%d for map #%d specified.\n", i, map);
-		return nullptr;
-	}
-
-	int base = 0;
-	for ( int m = 0; m < 256; ++m )
-	{
-		if ( !g_MapList.m_maps[m] )
-			continue;
-
-		if ( m == map )
-		{
-			if ( g_MapList.GetSectorQty(map) < i )
-				return nullptr;
-
-			return m_Sectors[base + i];
-		}
-
-		base += g_MapList.GetSectorQty(m);
-	}
-	return nullptr;
 }

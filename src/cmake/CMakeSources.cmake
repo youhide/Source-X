@@ -76,6 +76,8 @@ game/uo_files/CUOIndexRec.cpp
 game/uo_files/CUOItemInfo.h
 game/uo_files/CUOItemInfo.cpp
 game/uo_files/CUOItemTypeRec.h
+game/uo_files/CUOMap.cpp
+game/uo_files/CUOMap.h
 game/uo_files/CUOMapBlock.h
 game/uo_files/CUOMapList.h
 game/uo_files/CUOMapList.cpp

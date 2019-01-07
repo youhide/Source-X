@@ -4293,19 +4293,27 @@ bool CChar::r_Verb( CScript &s, CTextConsole * pSrc ) // Execute command from sc
 				tchar *z = Str_GetTemp();
 				if ( m_pArea )
 				{
-					if ( m_pArea->GetResourceID().IsItem())
-						sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE_AREA), m_pArea->GetName(), GetTopPoint().WriteUsed());
+                    if (m_pArea->GetResourceID().IsItem())
+                    {
+                        sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE_AREA), m_pArea->GetName(), GetTopPoint().WriteUsed());
+                    }
 					else
 					{
 						const CRegion * pRoom = GetTopPoint().GetRegion( REGION_TYPE_ROOM );
-						if ( ! pRoom )
-							sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE_AREA), m_pArea->GetName(), GetTopPoint().WriteUsed());
-						else
-							sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE_ROOM), m_pArea->GetName(), pRoom->GetName(), GetTopPoint().WriteUsed());
+                        if (pRoom)
+                        {
+                            sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE_ROOM), m_pArea->GetName(), pRoom->GetName(), GetTopPoint().WriteUsed());
+                        }
+                        else
+                        {
+                            sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE_AREA), m_pArea->GetName(), GetTopPoint().WriteUsed());
+                        }
 					}
 				}
-				else
-					sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE), GetTopPoint().WriteUsed());
+                else
+                {
+                    sprintf(z, g_Cfg.GetDefaultMsg(DEFMSG_MSG_WHERE), GetTopPoint().WriteUsed());
+                }
 				pCharSrc->ObjMessage(z, this);
 			}
 			break;

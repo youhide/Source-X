@@ -20,6 +20,7 @@
 #include "items/CItemStone.h"
 #include "components/CCChampion.h"
 #include "uo_files/CUOItemInfo.h"
+#include "uo_files/CUOMap.h"
 #include "uo_files/CUOTerrainInfo.h"
 #include "CServerTime.h"
 #include "CWorld.h"
@@ -905,21 +906,26 @@ bool CServerConfig::r_LoadVal( CScript &s )
 			std::string str = s.GetKey()+3;
 			for ( size_t j = 0; j < str.size(); ++j )
 			{
-				if ( IsDigit(str[j]) )
-					continue;
+                if (IsDigit(str[j]))
+                {
+                    continue;
+                }
 
 				ok = false;
 				break;
 			}
-			if ( ok && str.size() > 0 )
-				return g_MapList.Load(ATOI(str.c_str()), s.GetArgRaw());
+            if (ok && str.size() > 0)
+            {
+                return g_MapList.Load((uchar)ATOI(str.c_str()), s.GetArgRaw());
+            }
 
 			size_t length = str.size();
 
 			if ( length >= 2 /*at least .X*/ && str[0] == '.' && isdigit(str[1]) )
 			{
 				lpctstr pszStr = &(str[1]);
-				int nMapNumber = Exp_GetVal(pszStr);
+				uchar nMapNumber = (uchar)Exp_GetVal(pszStr);
+                CUOMap *pMap = g_MapList.GetMap(nMapNumber);
 
 				if ( g_MapList.IsMapSupported(nMapNumber) )
 				{
@@ -927,7 +933,6 @@ bool CServerConfig::r_LoadVal( CScript &s )
 
 					if ( !strnicmp(pszStr, "ALLSECTORS", 10) )
 					{
-						int nSectors = g_MapList.GetSectorQty(nMapNumber);
 						pszStr = s.GetArgRaw();
 
 						if ( pszStr && *pszStr )
@@ -935,8 +940,15 @@ bool CServerConfig::r_LoadVal( CScript &s )
 							CScript script(pszStr);
 							script.m_iResourceFileIndex = s.m_iResourceFileIndex;	// If s is a CResourceFile, it should have valid m_iResourceFileIndex
 							script.m_iLineNum = s.m_iLineNum;						// Line where Key/Arg were read
-							for ( int nIndex = 0; nIndex < nSectors; ++nIndex )
-								g_World.GetSector(nMapNumber, nIndex)->r_Verb(script, &g_Serv);
+                            short iSizeX = pMap->GetSectorCols();
+                            short iSizeY = pMap->GetSectorRows();
+                            for (short iCoordX = 0; iCoordX < iSizeX; ++iCoordX)
+                            {
+                                for (short iCoordY = 0; iCoordY < iSizeY; ++iCoordY)
+                                {
+                                    pMap->GetSector(iCoordX, iCoordY)->r_Verb(script, &g_Serv);
+                                }
+                            }
 						}
 
 						return true;
@@ -945,7 +957,7 @@ bool CServerConfig::r_LoadVal( CScript &s )
 					{
 						pszStr = pszStr + 7;
 						int iSecNumber = Exp_GetVal(pszStr);
-						int nSectors = g_MapList.GetSectorQty(nMapNumber);
+						int nSectors = pMap->GetSectorQty();
 						SKIP_SEPARATORS(pszStr);
 
 						if ((iSecNumber > 0) && (iSecNumber <=  nSectors))
@@ -957,11 +969,11 @@ bool CServerConfig::r_LoadVal( CScript &s )
 								CScript script(pszStr);
 								script.m_iResourceFileIndex = s.m_iResourceFileIndex;	// If s is a CResourceFile, it should have valid m_iResourceFileIndex
 								script.m_iLineNum = s.m_iLineNum;						// Line where Key/Arg were read
-								g_World.GetSector(nMapNumber, iSecNumber-1)->r_Verb(script, &g_Serv);
+								pMap->GetSector(iSecNumber-1)->r_Verb(script, &g_Serv);
 							}
 						}
 						else
-							g_Log.EventError("Invalid Sector #%d for Map %d\n", iSecNumber, nMapNumber);
+							g_Log.EventError("Invalid Sector #%d for Map %d\n", iSecNumber, (int)nMapNumber);
 
 						return true;
 					}
@@ -1493,25 +1505,26 @@ bool CServerConfig::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * 
 			{
 				if ( g_MapList.IsMapSupported(iNumber) )
 				{
+                    CUOMap *pMap = g_MapList.GetMap((uchar)iNumber);
 					if (!strnicmp(pszCmd,"BOUND.X", 7))
-						sVal.FormatVal( g_MapList.GetX(iNumber) );
+						sVal.FormatVal(pMap->GetSizeX());
 					else if (!strnicmp(pszCmd,"BOUND.Y", 7))
-						sVal.FormatVal( g_MapList.GetY(iNumber) );
+						sVal.FormatVal(pMap->GetSizeY());
 					else if (!strnicmp(pszCmd,"CENTER.X", 8))
-						sVal.FormatVal( g_MapList.GetCenterX(iNumber) );
+						sVal.FormatVal(pMap->GetSizeX() / 2);
 					else if (!strnicmp(pszCmd,"CENTER.Y", 8))
-						sVal.FormatVal( g_MapList.GetCenterY(iNumber) );
+						sVal.FormatVal(pMap->GetSizeY() / 2);
 					else if (!strnicmp(pszCmd, "SECTOR.", 7))
 					{
 						pszCmd += 7;
 						if (!strnicmp(pszCmd, "SIZE", 4))
-							sVal.FormatVal(g_MapList.GetSectorSize(iNumber));
+							sVal.FormatVal(pMap->GetSectorSize());
 						else if (!strnicmp(pszCmd, "ROWS", 4))
-							sVal.FormatVal(g_MapList.GetSectorRows(iNumber));
+							sVal.FormatVal(pMap->GetSectorRows());
 						else if (!strnicmp(pszCmd, "COLS", 4))
-							sVal.FormatVal(g_MapList.GetSectorCols(iNumber));
+							sVal.FormatVal(pMap->GetSectorCols());
 						else if (!strnicmp(pszCmd, "QTY", 3))
-							sVal.FormatVal(g_MapList.GetSectorQty(iNumber));
+							sVal.FormatVal(pMap->GetSectorQty());
 					}
 				}
 			}
@@ -1528,15 +1541,16 @@ bool CServerConfig::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * 
 
 			if ( g_MapList.IsMapSupported(iMapNumber) )
 			{
+                CUOMap *pMap = g_MapList.GetMap((uchar)iMapNumber);
 				if ( !strnicmp( pszKey, "SECTOR", 6 ))
 				{
 					pszKey = pszKey + 6;
 					int iSecNumber = Exp_GetVal(pszKey);
 					SKIP_SEPARATORS(pszKey);
-					int nSectors = g_MapList.GetSectorQty(iMapNumber);
+					int nSectors = pMap->GetSectorQty();
 
 					if ((iSecNumber > 0) && (iSecNumber <=  nSectors))
-						return( g_World.GetSector(iMapNumber, iSecNumber-1)->r_WriteVal(pszKey, sVal, pSrc) );
+						return( pMap->GetSector(iSecNumber-1)->r_WriteVal(pszKey, sVal, pSrc) );
 					else
 					{
 						g_Log.EventError("Invalid Sector #%d for Map %d\n", iSecNumber, iMapNumber);
@@ -3130,7 +3144,10 @@ bool CServerConfig::LoadResourceSection( CScript * pScript )
 			CRegionWorld *	pRegion = dynamic_cast <CRegionWorld*>( pPrvDef );
 			pNewDef	= pRegion;
 			ASSERT(pNewDef);
-			pRegion->UnRealizeRegion();
+            if (pRegion->m_iLinkedSectors != 0)
+            {
+                pRegion->UnRealizeRegion();
+            }
 			pRegion->r_Load(*pScript);
 			pRegion->RealizeRegion();
 		}

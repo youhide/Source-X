@@ -12,6 +12,7 @@
 #include "../items/CItemMap.h"
 #include "../items/CItemMessage.h"
 #include "../components/CCSpawn.h"
+#include "../uo_files/CUOMap.h"
 #include "../spheresvr.h"
 #include "../triggers.h"
 #include "CClient.h"
@@ -1929,7 +1930,7 @@ void CClient::addMap() const
 		return;
 
 	CPointMap pt = m_pChar->GetTopPoint();
-	new PacketMapChange(this, g_MapList.m_mapid[pt.m_map]);
+	new PacketMapChange(this, g_MapList.GetMap(pt.m_map)->GetRealID());
 }
 
 void CClient::addMapDiff() const
@@ -2323,7 +2324,7 @@ blank_map:
 		pMap->m_itMap.m_top,
 		pMap->m_itMap.m_right,
 		pMap->m_itMap.m_bottom,
-		g_MapList.m_mapid[pMap->m_itMap.m_map]);
+		g_MapList.GetMap(pMap->m_itMap.m_map)->GetMapID());
 
 	if ( !rect.IsValid() )
 		goto blank_map;

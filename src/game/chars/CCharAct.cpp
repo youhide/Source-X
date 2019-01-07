@@ -3555,6 +3555,8 @@ bool CChar::MoveToChar(const CPointMap& pt, bool fForceFix, bool fAllowReject)
 		return false;
 
 	const CPointMap ptOld = GetUnkPoint();
+    CSector *pSector = pt.GetSector();
+    ASSERT(pSector);
     SetTopPoint(pt);
     bool fSectorChanged = pt.GetSector()->MoveCharToSector(this);
 

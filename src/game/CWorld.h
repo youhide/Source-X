@@ -240,9 +240,6 @@ private:
 
 public:
 	void Init();
-
-	CSector *GetSector( int map, int i ) const;	// gets sector # from one map
-
 	// Time
 
 	inline CServerTime GetCurrentTime() const

@@ -4,6 +4,7 @@
 #include "../game/CSector.h"
 #include "../game/CServer.h"
 #include "../game/CWorld.h"
+#include "../game/uo_files/CUOMap.h"
 #include "CRect.h"
 #include "CUIDExtra.h"
 #include "CPointBase.h"
@@ -115,6 +116,7 @@ void CPointBase::InitPoint()
 	m_y = -1;
 	m_z = 0;
 	m_map = 0;
+    _pSector = nullptr;
 }
 void CPointBase::ZeroPoint()
 {
@@ -202,9 +204,10 @@ bool CPointBase::IsValidZ() const
 
 bool CPointBase::IsValidXY() const
 {
-	if ( m_x < 0 || m_x >= g_MapList.GetX(m_map) )
+    CUOMap * pMap = g_MapList.GetMap(m_map);
+	if ( m_x < 0 || m_x > pMap->GetSizeX())
 		return false;
-	if ( m_y < 0 || m_y >= g_MapList.GetY(m_map) )
+	if ( m_y < 0 || m_y > pMap->GetSizeY())
 		return false;
 	return true;
 }
@@ -216,26 +219,42 @@ bool CPointBase::IsValidPoint() const
 
 bool CPointBase::IsCharValid() const
 {
-	if ( m_z <= -UO_SIZE_Z || m_z >= UO_SIZE_Z )
-		return false;
-	if (m_x <= 0 || m_x >= (short)(g_MapList.GetX(m_map)))
-		return false;
-	if (m_y <= 0 || m_y >= (short)(g_MapList.GetY(m_map)))
-		return false;
+    if (m_z <= -UO_SIZE_Z || m_z >= UO_SIZE_Z)
+    {
+        return false;
+    }
+    CUOMap * pMap = g_MapList.GetMap(m_map);
+    if (m_x <= 0 || m_x >= pMap->GetSizeX())
+    {
+        return false;
+    }
+    if (m_y <= 0 || m_y >= pMap->GetSizeY())
+    {
+        return false;
+    }
 	return true;
 }
 
 void CPointBase::ValidatePoint()
 {
-	if ( m_x < 0 )
-		m_x = 0;
-	if (m_x >= (short)(g_MapList.GetX(m_map)))
-		m_x = (short)(g_MapList.GetX(m_map) - 1);
+    CUOMap * pMap = g_MapList.GetMap(m_map);
+    if (m_x < 0)
+    {
+        m_x = 0;
+    }
+    if (m_x >= pMap->GetSizeX())
+    {
+        m_x = (short)(pMap->GetSizeX() - 1);
+    }
 
-	if ( m_y < 0 )
-		m_y = 0;
-	if (m_y >= (short)(g_MapList.GetY(m_map)))
-		m_y = (short)(g_MapList.GetY(m_map) - 1);
+    if (m_y < 0)
+    {
+        m_y = 0;
+    }
+    if (m_y >= pMap->GetSizeY())
+    {
+        m_y = (short)(pMap->GetSizeY() - 1);
+    }
 }
 
 bool CPointBase::IsSame2D( const CPointBase & pt ) const
@@ -843,7 +862,7 @@ size_t CPointBase::Read( tchar * pszVal )
 			if ( IsDigit(ppVal[3][0]))
 			{
                 ptTest.m_map = (uchar)(ATOI(ppVal[3]));
-				if ( !g_MapList.m_maps[ptTest.m_map] )
+				if ( !g_MapList.GetMap(ptTest.m_map) )
 				{
 					g_Log.EventError("Unsupported map #%d specified. Auto-fixing that to 0.\n", ptTest.m_map);
                     ptTest.m_map = 0;
@@ -852,10 +871,10 @@ size_t CPointBase::Read( tchar * pszVal )
 		case 3: // m_z
 			if ( IsDigit(ppVal[2][0]) || ppVal[2][0] == '-' )
                 ptTest.m_z = (char)(ATOI(ppVal[2]));
-		case 2:
+		case 2: // m_y
 			if (IsDigit(ppVal[1][0]))
                 ptTest.m_y = (short)(ATOI(ppVal[1]));
-		case 1:
+		case 1: // m_x
 			if (IsDigit(ppVal[0][0]))
                 ptTest.m_x = (short)(ATOI(ppVal[0]));
 		case 0:
@@ -875,14 +894,36 @@ size_t CPointBase::Read( tchar * pszVal )
 CSector * CPointBase::GetSector() const
 {
 	ADDTOCALLSTACK("CPointBase::GetSector");
-	if ( !IsValidXY() )
-	{
-		g_Log.Event(LOGL_ERROR, "Point(%d,%d): trying to get a sector for point on map #%d out of bounds for this map(%d,%d). Defaulting to sector 0 of the map.\n",
-			m_x, m_y, m_map, g_MapList.GetX(m_map), g_MapList.GetY(m_map));
-		return g_World.GetSector(m_map, 0);
-	}
-	// Get the world Sector we are in.
-	return g_World.GetSector(m_map, ((m_y / g_MapList.GetSectorSize(m_map) * g_MapList.GetSectorCols(m_map)) + ( m_x / g_MapList.GetSectorSize(m_map) )));
+    if (_pSector)
+    {
+        return _pSector;
+    }
+	return _GetSector();
+}
+
+CSector * CPointBase::_GetSector() const
+{
+    ADDTOCALLSTACK("CPointBase::_GetSector");
+    // Return the world Sector we are in.
+    CUOMap *pMap = g_MapList.GetMap(m_map);
+    if (!pMap)
+    {
+        g_Log.Event(LOGL_ERROR, "Trying to access a point in an invalid map %d, defaulting it to 0.\n", m_map);
+        pMap = g_MapList.GetMap(0); // Default it to map 0 (which must be loaded, otherwise the server shouldn't start).
+    }
+    if (!IsValidXY())
+    {
+        g_Log.Event(LOGL_ERROR, "Point(%d,%d): trying to get a sector for point on map #%d out of bounds for this map(%d,%d). Defaulting to sector 0 of the map.\n",
+            m_x, m_y, m_map, pMap->GetSizeX(), pMap->GetSizeY());
+        return pMap->GetSector(0, 0);
+    }
+
+    return pMap->GetSectorByCoords(m_x, m_y);
+}
+
+const void CPointBase::UpdateSector()
+{
+    _pSector = _GetSector();
 }
 
 CRegion * CPointBase::GetRegion( dword dwType ) const

@@ -26,7 +26,7 @@ public:
 
 ullong HashFileName(CSString csFile);
 
-extern struct CUOInstall
+extern class CUOInstall
 {
 	// "Software\\Origin Worlds Online\\Ultima Online\\1.0"
 	// bool m_fFullInstall;	// Are all files avail ?

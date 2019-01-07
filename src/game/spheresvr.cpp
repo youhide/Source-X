@@ -123,6 +123,7 @@ CWorld			g_World;			// the world. (we save this stuff)
 // Again, game servers stuff.
 CServerConfig	g_Cfg;
 CServer			g_Serv;				// current state, stuff not saved.
+CUOMapList		g_MapList;			// global maps information
 CUOInstall		g_Install;
 CVerDataMul		g_VerData;
 CExpression		g_Exp;				// Global script variables.
@@ -131,7 +132,6 @@ CEventLog		* g_pLog = &g_Log;
 CAccounts		g_Accounts;			// All the player accounts. name sorted CAccount
 CSStringList	g_AutoComplete;		// auto-complete list
 CScriptProfiler g_profiler;			// script profiler
-CUOMapList		g_MapList;			// global maps information
 
 
 lpctstr GetTimeMinDesc( int minutes )

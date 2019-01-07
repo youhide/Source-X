@@ -20,6 +20,7 @@
 #include "../game/items/CItemVendable.h"
 #include "../game/components/CCItemDamageable.h"
 #include "../game/components/CCPropsChar.h"
+#include "../game/uo_files/CUOMap.h"
 #include "../game/CObjBase.h"
 #include "../game/CWorld.h"
 #include "network.h"
@@ -629,8 +630,8 @@ PacketPlayerStart::PacketPlayerStart(const CClient* target) : PacketSend(XCMD_St
 	writeInt32(0xffffffff);
 	writeInt16(0);
 	writeInt16(0);
-	writeInt16(pt.m_map > 0 ? (word)(g_MapList.GetX(pt.m_map)) : 0x1800);
-	writeInt16(pt.m_map > 0 ? (word)(g_MapList.GetY(pt.m_map)) : 0x1000);
+	writeInt16(pt.m_map > 0 ? (word)(g_MapList.GetMap(pt.m_map)->GetSizeX()) : 0x1800);
+	writeInt16(pt.m_map > 0 ? (word)(g_MapList.GetMap(pt.m_map)->GetSizeY()) : 0x1000);
 	writeInt16(0);
 	writeInt32(0);
 
@@ -1425,17 +1426,19 @@ PacketQueryClient::PacketQueryClient(CClient* target, byte bCmd) : PacketSend(XC
 			writeByte(0x01);
 			writeByte(0);
 
-			for (int i = 0; i < 2; ++i)
+			for (uchar i = 0; i < 2; ++i)
 			{
 				writeByte((byte)i);
-				writeInt16((word)(g_MapList.GetX(i)));
-				writeInt16((word)(g_MapList.GetY(i)));
-				writeInt16((word)(g_MapList.GetX(i)));
-				writeInt16((word)(g_MapList.GetY(i)));
+				writeInt16((word)(g_MapList.GetMap(i)->GetSizeX()));
+				writeInt16((word)(g_MapList.GetMap(i)->GetSizeY()));
+				writeInt16((word)(g_MapList.GetMap(i)->GetSizeX()));
+				writeInt16((word)(g_MapList.GetMap(i)->GetSizeY()));
             }
 
             for (int i = 0; i < padding; ++i)
+            {
                 writeByte(0);
+            }
 
 		}
 		case 0x02:
@@ -1462,7 +1465,7 @@ PacketQueryClient::PacketQueryClient(CClient* target, byte bCmd) : PacketSend(XC
 			//Query Client Command
 			byte bMap = target->GetChar()->GetTopMap();
 			CPointMap pt = target->GetChar()->GetTopPoint();
-			dword dwBlockId = (pt.m_x * (g_MapList.GetY( bMap ) / UO_BLOCK_SIZE)) + pt.m_y;
+			dword dwBlockId = (pt.m_x * (g_MapList.GetMap(bMap)->GetSizeY() / UO_BLOCK_SIZE)) + pt.m_y;
 			writeInt32(dwBlockId);
 			writeInt32(0);
 			writeInt16(0);
@@ -2321,8 +2324,8 @@ PacketZoneChange::PacketZoneChange(const CClient* target, const CPointMap& pos) 
 	writeByte(0);
 	writeInt16(0);
 	writeInt16(0);
-	writeInt16((word)(g_MapList.GetX(pos.m_map)));
-	writeInt16((word)(g_MapList.GetY(pos.m_map)));
+	writeInt16((word)(g_MapList.GetMap(pos.m_map)->GetSizeY()));
+	writeInt16((word)(g_MapList.GetMap(pos.m_map)->GetSizeY()));
 
 	push(target);
 }
@@ -4158,13 +4161,15 @@ PacketEnableMapDiffs::PacketEnableMapDiffs(const CClient* target) : PacketExtend
 	ADDTOCALLSTACK("PacketEnableMapDiffs::PacketEnableMapDiffs");
 
 	int mapCount = 1;
-	int map;
+	uchar map;
 
 	// find map count
-	for (map = 255; map >= 0; map--)
+	for (map = (uchar)255; map >= 0; map--)
 	{
-		if (g_MapList.m_maps[map] == false)
-			continue;
+        if (g_MapList.GetMap(map) == nullptr)
+        {
+            continue;
+        }
 
 		mapCount = map;
 		break;
@@ -4174,17 +4179,25 @@ PacketEnableMapDiffs::PacketEnableMapDiffs(const CClient* target) : PacketExtend
 
 	for (map = 0; map < mapCount; map++)
 	{
-		if (g_Cfg.m_fUseMapDiffs && g_MapList.m_maps[map])
+		if (g_Cfg.m_fUseMapDiffs && g_MapList.GetMap(map))
 		{
-			if (g_Install.m_Mapdifl[map].IsFileOpen())
-				writeInt32((dword)g_Install.m_Mapdifl[map].GetLength() / 4);
-			else
-				writeInt32(0);
+            if (g_Install.m_Mapdifl[map].IsFileOpen())
+            {
+                writeInt32((dword)g_Install.m_Mapdifl[map].GetLength() / 4);
+            }
+            else
+            {
+                writeInt32(0);
+            }
 
-			if (g_Install.m_Stadifl[map].IsFileOpen())
-				writeInt32((dword)g_Install.m_Stadifl[map].GetLength() / 4);
-			else
-				writeInt32(0);
+            if (g_Install.m_Stadifl[map].IsFileOpen())
+            {
+                writeInt32((dword)g_Install.m_Stadifl[map].GetLength() / 4);
+            }
+            else
+            {
+                writeInt32(0);
+            }
 		}
 		else
 		{

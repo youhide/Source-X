@@ -5,6 +5,7 @@
 #include "../common/CUIDExtra.h"
 #include "../common/CScript.h"
 #include "../sphere/threads.h"
+#include "uo_files/CUOMap.h"
 #include "chars/CChar.h"
 #include "clients/CClient.h"
 
@@ -80,17 +81,12 @@ void CRegion::UnRealizeRegion()
 	// remove myself from the world.
 	// used in the case of a ship where the region will move.
 
-	for ( int i = 0; ; ++i )
-	{
-		CSector * pSector = GetSector(i);
-		if ( pSector == nullptr )
-			break;
-		// Does the rect overlap ?
-		if ( ! IsOverlapped( pSector->GetRect()))
-			continue;
-		if ( pSector->UnLinkRegion( this ))
-			--m_iLinkedSectors;
-	}
+    CUOMap *pMap = g_MapList.GetMap(m_pt.m_map);
+    ASSERT(pMap);
+    if (m_iLinkedSectors > 0)   // not required on startup, only for resyncs
+    {
+        pMap->UnrealizeRegion(this, m_iLinkedSectors);
+    }
 
 }
 
@@ -104,22 +100,18 @@ bool CRegion::RealizeRegion()
 		m_pt = GetRegionCorner( DIR_QTY );	// center
 
 	// Attach to all sectors that i overlap.
-	ASSERT( m_iLinkedSectors == 0 );
-	for ( int i = 0, iMax = g_MapList.GetSectorQty(m_pt.m_map); i < iMax; ++i )
-	{
-		CSector *pSector = g_World.GetSector(m_pt.m_map, i);
-
-		if ( pSector && IsOverlapped(pSector->GetRect()) )
-		{
-			//	Yes, this sector overlapped, so add it to the sector list
-			if ( !pSector->LinkRegion(this) )
-			{
-				g_Log.EventError("Linking sector #%d for map %d for region %s failed (fatal for this region).\n", i, m_pt.m_map, GetName());
-				return false;
-			}
-			++m_iLinkedSectors;
-		}
-	}
+    if (m_iLinkedSectors != 0)
+    {
+        g_Log.EventError("Trying to realize region %s when it's already created.\n", GetName());
+        return false;
+    }
+    CUOMap *pMap = g_MapList.GetMap(m_pt.m_map);
+    if (!pMap)
+    {
+        g_Log.EventError("Trying to realize region %s on wrong map id %d.\n", GetName(), m_pt.m_map);
+        return false;
+    }
+    pMap->LinkRegion(this, m_iLinkedSectors);
 	return true;
 }
 

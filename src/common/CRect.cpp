@@ -1,4 +1,5 @@
 #include "../game/items/CItem.h"
+#include "../game/uo_files/CUOMap.h"
 #include "../game/CSector.h"
 #include "../game/CServer.h"
 #include "../game/CWorld.h"
@@ -110,8 +111,14 @@ void CRect::NormalizeRect()
         m_right = m_left;
         m_left = wtmp;
     }
-    if (( m_map < 0 ) || ( m_map >= 256 )) m_map = 0;
-    if ( !g_MapList.m_maps[m_map] ) m_map = 0;
+    if ((m_map < 0) || (m_map >= 256))
+    {
+        m_map = 0;
+    }
+    if (!g_MapList.GetMap((uchar)m_map))
+    {
+        m_map = 0;
+    }
 }
 
 void CRect::SetRect( int left, int top, int right, int bottom, int map )
@@ -148,7 +155,7 @@ size_t CRect::Read( lpctstr pszVal )
 	{
 		case 5:
 			m_map = ATOI(ppVal[4]);
-			if (( m_map < 0 ) || ( m_map >= 256 ) || !g_MapList.m_maps[m_map] )
+			if (( m_map < 0 ) || ( m_map >= 256 ) || !g_MapList.GetMap((uchar)m_map) )
 			{
 				g_Log.EventError("Unsupported map #%d specified. Auto-fixing that to 0.\n", m_map);
 				m_map = 0;
@@ -270,7 +277,10 @@ CSector * CRect::GetSector( int i ) const	// ge all the sectors that make up thi
 	// RETURN: nullptr = no more
 
 	// Align new rect.
-    const int iSectorSize = g_MapList.GetSectorSize(m_map);
+    CUOMap *pMap = g_MapList.GetMap((uchar)m_map);
+    short iSectorSize = pMap->GetSectorSize();
+    short iSectorCols = pMap->GetSectorCols();
+    short iSectorRows = pMap->GetSectorRows();
 	CRectMap rect;
 	rect.m_left = m_left &~ (iSectorSize-1);
 	rect.m_right = ( m_right | (iSectorSize-1)) + 1;
@@ -279,25 +289,26 @@ CSector * CRect::GetSector( int i ) const	// ge all the sectors that make up thi
 	rect.m_map = m_map;
 	rect.NormalizeRectMax();
 
-    const int iSectorCols = g_MapList.GetSectorCols(m_map);
-    const int iSectorRows = g_MapList.GetSectorRows(m_map);
 	int width = (rect.GetWidth()) / iSectorSize;
 	ASSERT(width <= iSectorCols);
 	int height = (rect.GetHeight()) / iSectorSize;
 	ASSERT(height <= iSectorRows);
 
-	int iBase = (( rect.m_top / iSectorSize) * iSectorCols) + ( rect.m_left / iSectorSize );
+	//int iBase = (( rect.m_top / iSectorSize) * iSectorCols) + ( rect.m_left / iSectorSize);
+    CSector *pBase = pMap->GetSectorByCoords((short)rect.m_left, (short)rect.m_top);;
 
-	if ( i >= ( height * width ))
-	{
-		if ( ! i )
-			return g_World.GetSector(m_map, iBase);
-		return nullptr;
-	}
+    if (i >= (height * width))
+    {
+        if (!i)
+        {
+            return pBase;
+        }
+        return nullptr;
+    }
 
 	int indexoffset = (( i / width ) * iSectorCols) + ( i % width );
 
-	return g_World.GetSector(m_map, iBase+indexoffset);
+	return pMap->GetSector(pBase->GetIndex() + indexoffset);
 }
 
 //*************************************************************************
@@ -305,12 +316,17 @@ CSector * CRect::GetSector( int i ) const	// ge all the sectors that make up thi
 
 bool CRectMap::IsValid() const
 {
+    CUOMap *pMap = g_MapList.GetMap((uchar)m_map);
     int iSizeX = GetWidth();
-    if ( iSizeX < 0 || iSizeX > g_MapList.GetX(m_map) )
+    if (iSizeX < 0 || iSizeX > pMap->GetSizeX())
+    {
         return false;
+    }
     int iSizeY = GetHeight();
-    if ( iSizeY < 0 || iSizeY > g_MapList.GetY(m_map) )
+    if (iSizeY < 0 || iSizeY > pMap->GetSizeY())
+    {
         return false;
+    }
     return true;
 }
 
@@ -324,5 +340,6 @@ void CRectMap::NormalizeRect()
 void CRectMap::NormalizeRectMax()
 {
 	ADDTOCALLSTACK("CRectMap::NormalizeRectMax");
-	CRect::NormalizeRectMax( g_MapList.GetX(m_map), g_MapList.GetY(m_map));
+    CUOMap *pMap = g_MapList.GetMap((uchar)m_map);
+	CRect::NormalizeRectMax(pMap->GetSizeX(), pMap->GetSizeY());
 }

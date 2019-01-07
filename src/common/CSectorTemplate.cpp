@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "../game/chars/CChar.h"
 #include "../game/items/CItemShip.h"
+#include "../game//uo_files/CUOMap.h"
 #include "../common/CLog.h"
 #include "../sphere/ProfileTask.h"
 #include "CException.h"
@@ -181,33 +182,14 @@ CSector *CSectorBase::GetAdjacentSector(DIR_TYPE dir) const
 
 CSectorBase::CSectorBase()
 {
-	m_map = 0;
-	m_index = 0;
+    _iIndex = 0;
 	m_dwFlags = 0;
+    _pMap = nullptr;
 }
 
 CSectorBase::~CSectorBase()
 {
 	ClearMapBlockCache();
-}
-
-void CSectorBase::Init(int index, int newmap)
-{
-	ADDTOCALLSTACK("CSectorBase::Init");
-	if (( newmap < 0 ) || ( newmap >= 256 ) || !g_MapList.m_maps[newmap] )
-	{
-		g_Log.EventError("Trying to initalize a sector %d in unsupported map #%d. Defaulting to 0,0.\n", index, newmap);
-	}
-	else if (( index < 0 ) || ( index >= g_MapList.GetSectorQty(newmap) ))
-	{
-		m_map = newmap;
-		g_Log.EventError("Trying to initalize a sector by sector number %d out-of-range for map #%d. Defaulting to 0,%d.\n", index, newmap, newmap);
-	}
-	else
-	{
-		m_index = index;
-		m_map = newmap;
-	}
 }
 
 bool CSectorBase::CheckMapBlockTime( const MapBlockCache::value_type& Elem ) //static
@@ -257,7 +239,7 @@ void CSectorBase::CheckMapBlockCache()
 		CPointMap pt = GetBasePoint();
 		g_Log.EventDebug("m_MapBlockCache.erase(%d)\n", iBlock); 
 		g_Log.EventDebug("check time %d, index %d/%" PRIuSIZE_T "\n", m_iMapBlockCacheTime, iBlock, m_MapBlockCache.size());
-		g_Log.EventDebug("sector #%d [%d,%d,%d,%d]\n", GetIndex(), pt.m_x, pt.m_y, pt.m_z, pt.m_map);
+		g_Log.EventDebug("sector #%d [%d,%d,%d,%d]\n", static_cast<CSector*>(this)->GetIndex(), pt.m_x, pt.m_y, pt.m_z, pt.m_map);
 		EXC_DEBUG_END;
 	}
 }

@@ -9,6 +9,7 @@
 #include "components/CCSpawn.h"
 #include "components/CCItemDamageable.h"
 #include "items/CItem.h"
+#include "uo_files/CUOMap.h"
 #include "CObjBase.h"
 #include "CSector.h"
 #include "CWorld.h"
@@ -20,23 +21,60 @@
 
 int64 CSectorBase::m_iMapBlockCacheTime = 0;
 
-CSector::CSector() : CCTimedObject(PROFILE_SECTORS)
+CSector::CSector(CUOMap * pMap, short x, short y, int index) : CCTimedObject(PROFILE_SECTORS)
 {
-	m_ListenItems = 0;
-
-	m_RainChance = 0;		// 0 to 100%
-	m_ColdChance = 0;		// Will be snow if rain chance success.
-	SetDefaultWeatherChance();
-
-	m_dwFlags = 0;
-	m_fSaveParity = false;
-    m_Chars_Active.init(this);
-    GoSleep();    // Every sector is sleeping at start, they only awake when any player enter (this eases the load at startup).
+    ADDTOCALLSTACK("CSector::CSector()");
+    _iPointX = x;
+    _iPointY = y;
+    _pMap = pMap;
+    _iIndex = index;
+    init();
 }
 
 CSector::~CSector()
 {
 	ASSERT( ! HasClients());
+}
+
+void CSector::init()
+{
+    ADDTOCALLSTACK("CSector::init");
+
+    _ptBasePoint.InitPoint();
+    m_ListenItems = 0;
+
+    m_RainChance = 0;		// 0 to 100%
+    m_ColdChance = 0;		// Will be snow if rain chance success.
+
+    m_dwFlags = 0;
+    m_fSaveParity = false;
+    m_Chars_Active.init(this);
+    GoSleep();    // Every sector is sleeping at start, they only awake when any player enter (this eases the load at startup).
+
+    short iSectorSize = GetMap()->GetSectorSize();
+    _ptBasePoint.m_x = _iPointX * iSectorSize;
+    _ptBasePoint.m_y = _iPointY * iSectorSize;
+
+    SetDefaultWeatherChance();
+}
+
+CSector::CSector(const CSector & copy) : CCTimedObject(PROFILE_SECTORS)
+{
+    _iPointX = copy._iPointX;
+    _iPointY = copy._iPointY;
+    _pMap = copy._pMap;
+    _iIndex = copy._iIndex;
+    init();
+}
+
+CSector & CSector::operator=(const CSector & other)
+{
+    // TODO: insert return statement here
+    _iPointX = other._iPointX;
+    _iPointY = other._iPointY;
+    _pMap = other._pMap;
+    _iIndex = other._iIndex;
+    return *this;
 }
 
 enum SC_TYPE
@@ -132,7 +170,7 @@ bool CSector::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * pSrc )
 			sVal.FormatVal( GetLocalTime());
 			return true;
 		case SC_NUMBER:
-			sVal.FormatVal(m_index);
+			sVal.FormatVal(_iIndex);
 			return true;
 		case SC_ISDARK:
 			sVal.FormatVal( IsDark() );
@@ -634,25 +672,35 @@ bool CSector::v_AllClients( CScript & s, CTextConsole * pSrc )
 	return fRet;
 }
 
+short CSector::GetPointX() const
+{
+    return _iPointX;
+}
+
+short CSector::GetPointY() const
+{
+    return _iPointY;
+}
+
 int CSector::GetLocalTime() const
 {
 	ADDTOCALLSTACK("CSector::GetLocalTime");
 	//	Get local time of the day (in minutes)
 	CPointMap pt = GetBasePoint();
 	int64 iLocalTime = g_World.GetGameWorldTime();
-
+    CUOMap * pMap = GetMap();
 	if ( !g_Cfg.m_bAllowLightOverride )
 	{
-		iLocalTime += ( pt.m_x * 24*60 ) / g_MapList.GetX(pt.m_map);
+		iLocalTime += ( pt.m_x * 24*60 ) / pMap->GetSizeX();
 	}
 	else
 	{
 		// Time difference between adjacent sectors in minutes
-		int iSectorTimeDiff = (24*60) / g_MapList.GetSectorCols(pt.m_map);
+		int iSectorTimeDiff = (24*60) / pMap->GetSectorCols();
 
 		// Calculate the # of columns between here and Castle Britannia ( x = 1400 )
-		//int iSectorOffset = ( pt.m_x / g_MapList.GetX(pt.m_map) ) - ( (24*60) / g_MapList.GetSectorSize(pt.m_map));
-		int iSectorOffset = ( pt.m_x / g_MapList.GetSectorSize(pt.m_map));
+		//int iSectorOffset = ( pt.m_x / g_MapList.GetMap(pt.m_map).GetSizeX() ) - ( (24*60) / g_MapList.GetSectorSize(pt.m_map));
+		int iSectorOffset = ( pt.m_x / pMap->GetSectorSize());
 
 		// Calculate the time offset from global time
 		int iTimeOffset = iSectorOffset * iSectorTimeDiff;
@@ -860,7 +908,7 @@ void CSector::SetDefaultWeatherChance()
 {
 	ADDTOCALLSTACK("CSector::SetDefaultWeatherChance");
 	CPointMap pt = GetBasePoint();
-	byte iPercent = (byte)(IMulDiv( pt.m_y, 100, g_MapList.GetY(pt.m_map) ));	// 100 = south
+	byte iPercent = (byte)(IMulDiv( pt.m_y, 100, GetMap()->GetSizeY() ));	// 100 = south
 	if ( iPercent < 50 )
 	{
 		// Anywhere north of the Britain Moongate is a good candidate for snow
@@ -1049,7 +1097,8 @@ bool CSector::MoveCharToSector( CChar * pChar )
 			}
 		}
 	}
-
+    CPointMap pt = pChar->GetTopPoint();
+    pt.UpdateSector();
     AddChar(pChar);
     m_Chars_Active.AddCharToSector(pChar);	// remove from previous spot.
 	
@@ -1170,9 +1219,6 @@ void CSector::Close()
 void CSector::RespawnDeadNPCs()
 {
 	ADDTOCALLSTACK("CSector::RespawnDeadNPCs");
-	// skip sectors in unsupported maps
-	if ( !g_MapList.m_maps[m_map] )
-        return;
 
 	// Respawn dead NPC's
 	CChar * pCharNext;
@@ -1243,11 +1289,6 @@ bool CSector::OnTick()
     */
 
 	EXC_TRY("Tick");
-
-	//	do not tick sectors on maps not supported by server
-	if ( !g_MapList.m_maps[m_map] )
-		return true;
-
     EXC_SET_BLOCK("light change");
 	// Check for light change before putting the sector to sleep, since in other case the
 	// world light levels will be shitty
@@ -1521,4 +1562,58 @@ void CSector::ClientDetach( CChar * pChar )
 	if ( ! IsCharActiveIn( pChar ))
 		return;
 	m_Chars_Active.ClientDetach();
+}
+
+
+void CSector::SetAdjacentSectors()
+{
+    for (int i = 0; i < (int)DIR_QTY; ++i)
+    {
+        uint16 tmpX = _iPointX;
+        uint16 tmpY = _iPointY;
+        switch ((DIR_TYPE)i)
+        {
+            case DIR_N:
+                tmpY -= 1;
+                break;
+            case DIR_NE:
+                tmpX += 1;
+                tmpY -= 1;
+                break;
+            case DIR_E:
+                tmpX += 1;
+                break;
+            case DIR_SE:
+                tmpX += 1;
+                tmpY += 1;
+                break;
+            case DIR_S:
+                tmpY += 1;
+                break;
+            case DIR_SW:
+                tmpX -= 1;
+                tmpY += 1;
+                break;
+            case DIR_W:
+                tmpX -= 1;
+                break;
+            case DIR_NW:
+                tmpX -= 1;
+                tmpY -= 1;
+                break;
+        }
+        CSector * pSector = GetMap()->GetSector(tmpX, tmpY);
+        if (!pSector)
+        {
+            _mAdjacentSectors[(DIR_TYPE)i] = nullptr;
+            continue;
+        }
+        _mAdjacentSectors[(DIR_TYPE)i] = pSector;
+    }
+}
+
+CSector *CSector::GetAdjacentSector(DIR_TYPE dir) const
+{
+    ASSERT(dir >= DIR_N && dir < DIR_QTY);
+    return _mAdjacentSectors.at(dir);
 }

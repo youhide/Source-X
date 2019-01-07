@@ -87,12 +87,13 @@ private:
 
 class CSectorBase		// world sector
 {
-protected:
-	int	m_index;		// sector index
-	int m_map;			// sector map
 private:
 	typedef std::map<int, CServerMapBlock*>	MapBlockCache;
 	MapBlockCache							m_MapBlockCache;
+protected:
+    int	_iIndex;		// sector index
+    CUOMap *_pMap;
+    CPointMap _ptBasePoint;
 public:
 	static const char *m_sClassName;
 	CObjPointSortArray	m_Teleports;		//	CTeleport array
@@ -103,14 +104,6 @@ public:
 	CCharsDisconnectList	m_Chars_Disconnect;	// dead NPCs, etc
 	CItemsList m_Items_Timer;				// CItem(s) in this CSector that need timers.
 	CItemsList m_Items_Inert;				// CItem(s) in this CSector. (no timer required)
-protected:
-    std::map<DIR_TYPE, CSector*> _mAdjacentSectors;
-public:
-    /*
-    * @brief Asign it's adjacent's sectors
-    */
-    void SetAdjacentSectors();
-    CSector *GetAdjacentSector(DIR_TYPE dir) const;
 public:
 	CSectorBase();
 	virtual ~CSectorBase();
@@ -120,11 +113,16 @@ private:
 	CSectorBase& operator=(const CSectorBase& other);
 
 public:
-	void Init(int index, int newmap);
 
+    int GetIndex() const
+    {
+        return _iIndex;
+    }
+    CUOMap * GetMap() const
+    {
+        return _pMap;
+    }
 	// Location map units.
-	int GetIndex() const { return m_index; }
-	int GetMap() const { return m_map; }
 	CPointMap GetBasePoint() const;
 	CRectMap GetRect() const;
 	bool IsInDungeon() const;

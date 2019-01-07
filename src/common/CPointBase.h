@@ -20,6 +20,8 @@ DIR_TYPE GetDirTurn( DIR_TYPE dir, int offset );
 
 struct CPointBase	// Non initialized 3d point.
 {
+private:
+    CSector *_pSector;
 public:
 	static lpctstr const sm_szLoadKeys[];
 	static const int sm_Moves[DIR_QTY+1][2];
@@ -79,7 +81,8 @@ public:
 	int StepLinePath( const CPointBase & ptSrc, int iSteps );
 
 	CSector * GetSector() const;
-
+    CSector * _GetSector() const;
+    const void UpdateSector();
 #define REGION_TYPE_AREA  1
 #define REGION_TYPE_ROOM  2
 #define REGION_TYPE_HOUSE 4
