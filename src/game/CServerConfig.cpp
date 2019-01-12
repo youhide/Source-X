@@ -916,7 +916,7 @@ bool CServerConfig::r_LoadVal( CScript &s )
 			}
             if (ok && str.size() > 0)
             {
-                return g_MapList.Load((uchar)ATOI(str.c_str()), s.GetArgRaw());
+                return g_Serv.GetUOMapList().Load((uchar)ATOI(str.c_str()), s.GetArgRaw());
             }
 
 			size_t length = str.size();
@@ -925,9 +925,9 @@ bool CServerConfig::r_LoadVal( CScript &s )
 			{
 				lpctstr pszStr = &(str[1]);
 				uchar nMapNumber = (uchar)Exp_GetVal(pszStr);
-                CUOMap *pMap = g_MapList.GetMap(nMapNumber);
+                CUOMap *pMap = g_Serv.GetUOMapList().GetMap(nMapNumber);
 
-				if ( g_MapList.IsMapSupported(nMapNumber) )
+				if ( g_Serv.GetUOMapList().IsMapSupported(nMapNumber) )
 				{
 					SKIP_SEPARATORS(pszStr);
 
@@ -972,8 +972,10 @@ bool CServerConfig::r_LoadVal( CScript &s )
 								pMap->GetSector(iSecNumber-1)->r_Verb(script, &g_Serv);
 							}
 						}
-						else
-							g_Log.EventError("Invalid Sector #%d for Map %d\n", iSecNumber, (int)nMapNumber);
+                        else
+                        {
+                            g_Log.EventError("Invalid Sector #%d for Map %d\n", iSecNumber, (int)nMapNumber);
+                        }
 
 						return true;
 					}
@@ -1500,12 +1502,12 @@ bool CServerConfig::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * 
 			sVal.FormatVal(0);
 
 			if ( !*pszCmd )
-				sVal.FormatVal( g_MapList.IsMapSupported(iNumber) );
+				sVal.FormatVal( g_Serv.GetUOMapList().IsMapSupported(iNumber) );
 			else
 			{
-				if ( g_MapList.IsMapSupported(iNumber) )
+				if ( g_Serv.GetUOMapList().IsMapSupported(iNumber) )
 				{
-                    CUOMap *pMap = g_MapList.GetMap((uchar)iNumber);
+                    CUOMap *pMap = g_Serv.GetUOMapList().GetMap((uchar)iNumber);
 					if (!strnicmp(pszCmd,"BOUND.X", 7))
 						sVal.FormatVal(pMap->GetSizeX());
 					else if (!strnicmp(pszCmd,"BOUND.Y", 7))
@@ -1539,9 +1541,9 @@ bool CServerConfig::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * 
 			SKIP_SEPARATORS(pszKey);
 			sVal.FormatVal(0);
 
-			if ( g_MapList.IsMapSupported(iMapNumber) )
+			if ( g_Serv.GetUOMapList().IsMapSupported(iMapNumber) )
 			{
-                CUOMap *pMap = g_MapList.GetMap((uchar)iMapNumber);
+                CUOMap *pMap = g_Serv.GetUOMapList().GetMap((uchar)iMapNumber);
 				if ( !strnicmp( pszKey, "SECTOR", 6 ))
 				{
 					pszKey = pszKey + 6;
@@ -4222,10 +4224,9 @@ bool CServerConfig::Load( bool fResync )
 
 	if ( ! fResync )
 	{
-		g_Install.FindInstall();
-
         // Open the MUL files I need.
         g_Log.Event(LOGM_INIT, "\nIndexing the client files...\n");
+        g_Install.FindInstall();
         VERFILE_TYPE i = g_Install.OpenFiles(
             (1ull<<VERFILE_MAP)|
             (1<<VERFILE_STAIDX)|
@@ -4260,6 +4261,7 @@ bool CServerConfig::Load( bool fResync )
             CurrentProfileData.Count(PROFILE_STAT_FAULTS, 1);
             return false;
         }
+        g_Serv.GetUOMapList().Init();
 	}
 	else
 	{

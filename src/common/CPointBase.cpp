@@ -204,7 +204,7 @@ bool CPointBase::IsValidZ() const
 
 bool CPointBase::IsValidXY() const
 {
-    CUOMap * pMap = g_MapList.GetMap(m_map);
+    CUOMap * pMap = g_Serv.GetUOMapList().GetMap(m_map);
 	if ( m_x < 0 || m_x > pMap->GetSizeX())
 		return false;
 	if ( m_y < 0 || m_y > pMap->GetSizeY())
@@ -223,7 +223,7 @@ bool CPointBase::IsCharValid() const
     {
         return false;
     }
-    CUOMap * pMap = g_MapList.GetMap(m_map);
+    CUOMap * pMap = g_Serv.GetUOMapList().GetMap(m_map);
     if (m_x <= 0 || m_x >= pMap->GetSizeX())
     {
         return false;
@@ -237,7 +237,7 @@ bool CPointBase::IsCharValid() const
 
 void CPointBase::ValidatePoint()
 {
-    CUOMap * pMap = g_MapList.GetMap(m_map);
+    CUOMap * pMap = g_Serv.GetUOMapList().GetMap(m_map);
     if (m_x < 0)
     {
         m_x = 0;
@@ -862,7 +862,7 @@ size_t CPointBase::Read( tchar * pszVal )
 			if ( IsDigit(ppVal[3][0]))
 			{
                 ptTest.m_map = (uchar)(ATOI(ppVal[3]));
-				if ( !g_MapList.GetMap(ptTest.m_map) )
+				if ( !g_Serv.GetUOMapList().GetMap(ptTest.m_map) )
 				{
 					g_Log.EventError("Unsupported map #%d specified. Auto-fixing that to 0.\n", ptTest.m_map);
                     ptTest.m_map = 0;
@@ -905,11 +905,11 @@ CSector * CPointBase::_GetSector() const
 {
     ADDTOCALLSTACK("CPointBase::_GetSector");
     // Return the world Sector we are in.
-    CUOMap *pMap = g_MapList.GetMap(m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap(m_map);
     if (!pMap)
     {
         g_Log.Event(LOGL_ERROR, "Trying to access a point in an invalid map %d, defaulting it to 0.\n", m_map);
-        pMap = g_MapList.GetMap(0); // Default it to map 0 (which must be loaded, otherwise the server shouldn't start).
+        pMap = g_Serv.GetUOMapList().GetMap(0); // Default it to map 0 (which must be loaded, otherwise the server shouldn't start).
     }
     if (!IsValidXY())
     {

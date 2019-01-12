@@ -1,5 +1,6 @@
 
 #include "../common/CLog.h"
+#include "../game/CServer.h"
 #include "../game/CServerConfig.h"
 #include "../game/uo_files/CUOMap.h"
 #include "../sphere/threads.h"
@@ -263,17 +264,18 @@ VERFILE_TYPE CUOInstall::OpenFiles( ullong ullMask )
 				//	check for map files of custom maps
                 for (uint m = 0; m <= UCHAR_MAX; ++m)
                 {
-                    if (g_MapList.IsInitialized((uchar)m) || (m == 0)) //Need at least a minimum of map0... (Ben)
+
+                    if (g_Serv.GetUOMapList().IsInitialized((uchar)m) || (m == 0)) //Need at least a minimum of map0... (Ben)
                     {
-                        pMap = g_MapList.GetMap((uchar)m);
+                        pMap = g_Serv.GetUOMapList().GetMap((uchar)m);
                         if (!pMap)
                         {
                             continue;
                         }
-                        uchar index = pMap->GetRealID();
+                        uchar index = pMap->GetMapFileID();
                         if (index == UCHAR_MAX)
                         {
-                            //g_MapList.m_maps[m] = false;
+                            //g_Serv.GetUOMapList().m_maps[m] = false;
                             continue;
                         }
 
@@ -415,13 +417,16 @@ VERFILE_TYPE CUOInstall::OpenFiles( ullong ullMask )
                                 m_Statics[index].Close();
                             }
 
-                            if (index == 1 && m_Maps[0].IsFileOpen())
+                            if (m_Maps[0].IsFileOpen())
                             {
-                                pMap->SetRealID(0);
-                            }
-                            else
-                            {
-                                pMap->SetMapID(0);
+                                if (index == 1) // If we are setting map1, but the opened file is map 0 (missing map1 file) set it's id to map0.
+                                {
+                                    pMap->SetRealID(0);
+                                }
+                                else
+                                {
+                                    pMap->SetMapID(0);
+                                }
                             }
                         }
 
@@ -474,7 +479,7 @@ VERFILE_TYPE CUOInstall::OpenFiles( ullong ullMask )
 
     // --
 
-	g_MapList.Init();
+	g_Serv.GetUOMapList().Init();
 
 	tchar * z = Str_GetTemp();
 	tchar * z1 = Str_GetTemp();
@@ -486,11 +491,11 @@ VERFILE_TYPE CUOInstall::OpenFiles( ullong ullMask )
 		bool bSup = false;
         if (j > 5)	// SA+
         {
-            bSup = (g_MapList.GetMap(j - 1) != nullptr);
+            bSup = (g_Serv.GetUOMapList().GetMap(j - 1) != nullptr);
         }
         else
         {
-            bSup = (g_MapList.GetMap(j) != nullptr);
+            bSup = (g_Serv.GetUOMapList().GetMap(j) != nullptr);
         }
 
 		if ( bSup )

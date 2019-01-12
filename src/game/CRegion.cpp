@@ -1,9 +1,11 @@
 // Common for client and server.
 
 #include "../common/resource/blocks/CRandGroupDef.h"
+#include "../common/resource/CResourceID.h"
 #include "../common/resource/CResourceLock.h"
 #include "../common/CUIDExtra.h"
 #include "../common/CScript.h"
+#include "../game/CServer.h"
 #include "../sphere/threads.h"
 #include "uo_files/CUOMap.h"
 #include "chars/CChar.h"
@@ -81,13 +83,12 @@ void CRegion::UnRealizeRegion()
 	// remove myself from the world.
 	// used in the case of a ship where the region will move.
 
-    CUOMap *pMap = g_MapList.GetMap(m_pt.m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap(m_pt.m_map);
     ASSERT(pMap);
     if (m_iLinkedSectors > 0)   // not required on startup, only for resyncs
     {
         pMap->UnrealizeRegion(this, m_iLinkedSectors);
     }
-
 }
 
 bool CRegion::RealizeRegion()
@@ -105,7 +106,7 @@ bool CRegion::RealizeRegion()
         g_Log.EventError("Trying to realize region %s when it's already created.\n", GetName());
         return false;
     }
-    CUOMap *pMap = g_MapList.GetMap(m_pt.m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap(m_pt.m_map);
     if (!pMap)
     {
         g_Log.EventError("Trying to realize region %s on wrong map id %d.\n", GetName(), m_pt.m_map);
@@ -330,11 +331,13 @@ bool CRegion::r_WriteVal( lpctstr pszKey, CSString & sVal, CTextConsole * pSrc )
 		case RC_CLIENTS:
         {
             size_t uiClients = 0;
-            for (size_t i = 0; ; ++i)
+            for (int i = 0; ; ++i)
             {
                 CSector	*pSector = GetSector(i);
                 if (pSector == nullptr)
+                {
                     break;
+                }
                 uiClients += pSector->m_Chars_Active.HasClients();
             }
             sVal.FormatSTVal(uiClients);

@@ -12,10 +12,13 @@
 #include "../common/CDataBase.h"
 #include "../common/sqlite/SQLite.h"
 #include "../sphere/ConsoleInterface.h"
+#include "../game/uo_files/CUOMapList.h"
 #include "clients/CChat.h"
 #include "CServerDef.h"
 #include <atomic>
 
+
+#define GetMapList CUOMapList &g_Serv.GetUOMapList();
 
 class CItemShip;
 
@@ -62,6 +65,7 @@ public:
 	CSFileObj	fhFile;			//	file script object
 	CDataBase	m_hdb;			//	SQL data base
 	CSQLite		m_hldb;			//	Local database
+    CUOMapList _pMapList;
 
 private:
 	void ProfileDump( CTextConsole * pSrc, bool bDump = false );
@@ -75,6 +79,7 @@ private:
 	CServer& operator=(const CServer& other);
 
 public:
+    CUOMapList &GetUOMapList();
     SERVMODE_TYPE GetServerMode() const;
 	void SetServerMode( SERVMODE_TYPE mode );
     bool IsValidBusy() const;

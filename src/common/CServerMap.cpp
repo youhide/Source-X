@@ -6,11 +6,12 @@
 #include "CUOInstall.h"
 #include "CServerMap.h"
 #include "CRect.h"
+#include "../common/CLog.h"
 #include "../game/uo_files/CUOTerrainInfo.h"
 #include "../game/uo_files/CUOItemInfo.h"
 #include "../game/uo_files/CUOMap.h"
 #include "../game/CBase.h"
-#include "../common/CLog.h"
+#include "../game/CServer.h"
 #include "../game/CObjBase.h"
 #include "../game/CServerConfig.h"
 #include "../game/CWorld.h"
@@ -397,7 +398,7 @@ void CServerStaticsBlock::LoadStatics( dword ulBlockIndex, int map )
 	ASSERT( m_iStatics == 0 );
 
 	CUOIndexRec index;
-	if ( g_Install.ReadMulIndex(g_Install.m_Staidx[g_MapList.GetMap((uchar)map)->GetRealID()], ulBlockIndex, index) )
+	if ( g_Install.ReadMulIndex(g_Install.m_Staidx[g_Serv.GetUOMapList().GetMap((uchar)map)->GetMapFileID()], ulBlockIndex, index) )
 	{
 		// make sure that the statics block length is valid
 		if ((index.GetBlockLength() % sizeof(CUOStaticItemRec)) != 0)
@@ -410,7 +411,7 @@ void CServerStaticsBlock::LoadStatics( dword ulBlockIndex, int map )
 		ASSERT(m_iStatics);
 		m_pStatics = new CUOStaticItemRec[m_iStatics];
 		ASSERT(m_pStatics);
-		if ( ! g_Install.ReadMulData(g_Install.m_Statics[g_MapList.GetMap((uchar)map)->GetRealID()], index, m_pStatics) )
+		if ( ! g_Install.ReadMulData(g_Install.m_Statics[g_Serv.GetUOMapList().GetMap((uchar)map)->GetMapFileID()], index, m_pStatics) )
 		{
 			throw CSError(LOGL_CRIT, CSFile::GetLastError(), "CServerMapBlock: Read Statics");
 		}
@@ -457,7 +458,7 @@ void CServerMapBlock::Load( int bx, int by )
 	ADDTOCALLSTACK("CServerMapBlock::Load");
 	// Read in all the statics data for this block.
 	m_CacheTime.InitCacheTime();		// This is invalid !
-    CUOMap *pMap = g_MapList.GetMap((uchar)m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap((uchar)m_map);
 	ASSERT( bx < (pMap->GetSizeX()/UO_BLOCK_SIZE) );
 	ASSERT( by < (pMap->GetSizeY() /UO_BLOCK_SIZE) );
 
@@ -477,12 +478,12 @@ void CServerMapBlock::Load( int bx, int by )
 
 
 	bool bPatchedTerrain = false, bPatchedStatics = false;
-    int mapNumber = pMap->GetRealID();
+    int mapNumber = pMap->GetMapFileID();
 
-	if ( g_Cfg.m_fUseMapDiffs && g_MapList.m_pMapDiffCollection )
+	if ( g_Cfg.m_fUseMapDiffs && g_Serv.GetUOMapList().m_pMapDiffCollection )
 	{
 		// Check to see if the terrain or statics in this block is patched
-		CServerMapDiffBlock * pDiffBlock = g_MapList.m_pMapDiffCollection->GetAtBlock(ulBlockIndex, mapNumber);
+		CServerMapDiffBlock * pDiffBlock = g_Serv.GetUOMapList().m_pMapDiffCollection->GetAtBlock(ulBlockIndex, mapNumber);
         if (pDiffBlock)
         {
             if (pDiffBlock->m_pTerrainBlock)
@@ -718,12 +719,12 @@ void CServerMapDiffCollection::LoadMapDiffs()
 
 	for ( uchar m = 0; m < (uchar)256; ++m )
 	{
-        if (!g_MapList.IsMapSupported(m))
+        if (!g_Serv.GetUOMapList().IsMapSupported(m))
         {
             continue;
         }
 
-		int map = g_MapList.GetMap(m)->GetMapID();
+		int map = g_Serv.GetUOMapList().GetMap(m)->GetMapIndex();
 
 		// Load Mapdif Files
 		{
@@ -862,7 +863,7 @@ CServerMapDiffBlock * CServerMapDiffCollection::GetNewBlock(dword dwBlockId, int
 CServerMapDiffBlock * CServerMapDiffCollection::GetAtBlock(int bx, int by, int map)
 {
 	// See GetAtBlock(dword,int)
-	dword dwBlockId = (bx * (g_MapList.GetMap((uchar)map)->GetSizeY() / UO_BLOCK_SIZE)) + by;
+	dword dwBlockId = (bx * (g_Serv.GetUOMapList().GetMap((uchar)map)->GetSizeY() / UO_BLOCK_SIZE)) + by;
 	return GetAtBlock( dwBlockId, map );
 }
 
@@ -870,7 +871,7 @@ CServerMapDiffBlock * CServerMapDiffCollection::GetAtBlock(dword dwBlockId, int 
 {
 	// Retrieve a MapDiff block for the specified block id
 	ADDTOCALLSTACK("CServerMapDiffCollection::GetAtBlock");
-	if ( !g_MapList.IsMapSupported( map ) )
+	if ( !g_Serv.GetUOMapList().IsMapSupported( map ) )
 		return nullptr;
 
 	// Locate the requested block

@@ -966,7 +966,7 @@ bool CClient::r_Verb( CScript & s, CTextConsole * pSrc ) // Execute command from
                 short iSizeY = 0;
 				for ( uchar m = 0; m < (uchar)256 && !fFound; ++m )
 				{
-                    pMap = g_MapList.GetMap(m);
+                    pMap = g_Serv.GetUOMapList().GetMap(m);
                     if (!pMap)
                     {
                         continue;

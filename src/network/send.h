@@ -13,6 +13,7 @@
 #include "../game/CRegion.h"
 #include "../game/game_enums.h"
 #include "../game/CServerConfig.h"
+#include "../game/uo_files/CUOMapList.h"
 #include "packet.h"
 #include "network.h"
 #include <memory>

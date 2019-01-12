@@ -630,8 +630,8 @@ PacketPlayerStart::PacketPlayerStart(const CClient* target) : PacketSend(XCMD_St
 	writeInt32(0xffffffff);
 	writeInt16(0);
 	writeInt16(0);
-	writeInt16(pt.m_map > 0 ? (word)(g_MapList.GetMap(pt.m_map)->GetSizeX()) : 0x1800);
-	writeInt16(pt.m_map > 0 ? (word)(g_MapList.GetMap(pt.m_map)->GetSizeY()) : 0x1000);
+	writeInt16(pt.m_map > 0 ? (word)(g_Serv.GetUOMapList().GetMap(pt.m_map)->GetSizeX()) : 0x1800);
+	writeInt16(pt.m_map > 0 ? (word)(g_Serv.GetUOMapList().GetMap(pt.m_map)->GetSizeY()) : 0x1000);
 	writeInt16(0);
 	writeInt32(0);
 
@@ -1429,10 +1429,10 @@ PacketQueryClient::PacketQueryClient(CClient* target, byte bCmd) : PacketSend(XC
 			for (uchar i = 0; i < 2; ++i)
 			{
 				writeByte((byte)i);
-				writeInt16((word)(g_MapList.GetMap(i)->GetSizeX()));
-				writeInt16((word)(g_MapList.GetMap(i)->GetSizeY()));
-				writeInt16((word)(g_MapList.GetMap(i)->GetSizeX()));
-				writeInt16((word)(g_MapList.GetMap(i)->GetSizeY()));
+				writeInt16((word)(g_Serv.GetUOMapList().GetMap(i)->GetSizeX()));
+				writeInt16((word)(g_Serv.GetUOMapList().GetMap(i)->GetSizeY()));
+				writeInt16((word)(g_Serv.GetUOMapList().GetMap(i)->GetSizeX()));
+				writeInt16((word)(g_Serv.GetUOMapList().GetMap(i)->GetSizeY()));
             }
 
             for (int i = 0; i < padding; ++i)
@@ -1465,7 +1465,7 @@ PacketQueryClient::PacketQueryClient(CClient* target, byte bCmd) : PacketSend(XC
 			//Query Client Command
 			byte bMap = target->GetChar()->GetTopMap();
 			CPointMap pt = target->GetChar()->GetTopPoint();
-			dword dwBlockId = (pt.m_x * (g_MapList.GetMap(bMap)->GetSizeY() / UO_BLOCK_SIZE)) + pt.m_y;
+			dword dwBlockId = (pt.m_x * (g_Serv.GetUOMapList().GetMap(bMap)->GetSizeY() / UO_BLOCK_SIZE)) + pt.m_y;
 			writeInt32(dwBlockId);
 			writeInt32(0);
 			writeInt16(0);
@@ -2324,8 +2324,8 @@ PacketZoneChange::PacketZoneChange(const CClient* target, const CPointMap& pos) 
 	writeByte(0);
 	writeInt16(0);
 	writeInt16(0);
-	writeInt16((word)(g_MapList.GetMap(pos.m_map)->GetSizeY()));
-	writeInt16((word)(g_MapList.GetMap(pos.m_map)->GetSizeY()));
+	writeInt16((word)(g_Serv.GetUOMapList().GetMap(pos.m_map)->GetSizeY()));
+	writeInt16((word)(g_Serv.GetUOMapList().GetMap(pos.m_map)->GetSizeY()));
 
 	push(target);
 }
@@ -4166,7 +4166,7 @@ PacketEnableMapDiffs::PacketEnableMapDiffs(const CClient* target) : PacketExtend
 	// find map count
 	for (map = (uchar)255; map >= 0; map--)
 	{
-        if (g_MapList.GetMap(map) == nullptr)
+        if (g_Serv.GetUOMapList().GetMap(map) == nullptr)
         {
             continue;
         }
@@ -4179,7 +4179,7 @@ PacketEnableMapDiffs::PacketEnableMapDiffs(const CClient* target) : PacketExtend
 
 	for (map = 0; map < mapCount; map++)
 	{
-		if (g_Cfg.m_fUseMapDiffs && g_MapList.GetMap(map))
+		if (g_Cfg.m_fUseMapDiffs && g_Serv.GetUOMapList().GetMap(map))
 		{
             if (g_Install.m_Mapdifl[map].IsFileOpen())
             {

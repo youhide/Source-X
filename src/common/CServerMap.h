@@ -7,6 +7,7 @@
 
 #include "../game/uo_files/CUOMapBlock.h"
 #include "../game/uo_files/CUOStaticItemRec.h"
+#include "../game/uo_files/CUOMapList.h"
 #include "../game/uo_files/CUOMultiItemRec.h"
 #include "../game/uo_files/uofiles_macros.h"
 #include "../game/uo_files/uofiles_types.h"

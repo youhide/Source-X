@@ -14,8 +14,8 @@ class CUOMap
 {
 private:
 
-    uchar _iMapID;          // ID given in the ini for this map.
-    uchar _iRealID;         // ID of the file map used as base.
+    uchar _iMapIndex;          // ID given in the ini for this map.
+    uchar _iMapFileID;         // ID of the file map used as base.
 
     short _iSizeX;          // Size of the map for X coord.
     short _iSizeY;          // Size of the map for Y coord.
@@ -26,8 +26,8 @@ private:
     std::vector<CSector*> _vSectors;    // index of sectors.
 
 public:
-    uchar GetMapID();
-    uchar GetRealID();
+    uchar GetMapIndex();
+    uchar GetMapFileID();
 
     short GetSizeX();
     short GetSizeY();
@@ -44,9 +44,9 @@ protected:
     friend class CUOMapList;
     friend class CUOInstall;
     friend class CRegion;
-    CUOMap(uchar iMapID, uchar iRealID, short iSizeX, short iSizeY, short iSectorSize);
+    CUOMap();
     ~CUOMap();
-    bool init();
+    bool init(uchar iMapID, uchar iRealID, short iSizeX, short iSizeY, short iSectorSize);
     void SetMapID(uchar iMapID);
     void SetRealID(uchar iRealID);
     void LinkRegion(CRegion* pRegion, int& iLinkedSectors);

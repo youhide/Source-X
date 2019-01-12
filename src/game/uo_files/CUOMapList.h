@@ -27,18 +27,8 @@ extern class CUOMapList
 {
 private:
     std::map<uchar,CUOMap*> _mMaps;
-    short m_sizex[UCHAR_MAX];
-    short m_sizey[UCHAR_MAX];
-    short m_sectorsize[UCHAR_MAX];
-    //bool m_maps[UCHAR_MAX];		// list of supported maps
-    uchar m_mapnum[UCHAR_MAX];		// real map number (0 for 0 and 1, 2 for 2, and so on) - file name
-    uchar m_mapid[UCHAR_MAX];		// map id used by the client
 public:
     CServerMapDiffCollection * m_pMapDiffCollection;
-
-protected:
-    bool m_mapsinitalized[256];
-
 
 public:
     /** @name Constructors, Destructor, Asign operator:
@@ -55,13 +45,12 @@ public:
     ///@{
     void Init();
     bool Load(uchar iMap, char *args);
-    bool Load(uchar iMap, short maxx, short maxy, short sectorsize, uchar realmapnum, uchar mapid);
     ///@}
     /** @name Operations:
      */
     ///@{
 protected:
-    bool DetectMapSize(int iMap);
+    bool DetectMapSize(int iMap, short &iSizeX, short &iSizeY, short &iSectorSize);
     friend class CWorld;
     void Close();
 public:

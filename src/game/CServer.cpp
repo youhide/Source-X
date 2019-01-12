@@ -120,6 +120,11 @@ bool CServer::SetProcessPriority(int iPriorityLevel)
     return fSuccess;
 }
 
+CUOMapList & CServer::GetUOMapList()
+{
+    return _pMapList;
+}
+
 SERVMODE_TYPE CServer::GetServerMode() const
 {
     return m_iModeCode.load(std::memory_order_acquire);

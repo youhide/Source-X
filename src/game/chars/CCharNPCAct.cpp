@@ -2281,7 +2281,7 @@ void CChar::NPC_Pathfinding()
 	int			iInt = ( NPC_GetAiFlags() & NPC_AI_ALWAYSINT ) ? 300 : Stat_GetAdjusted(STAT_INT);
 	CPointMap	pTarg = m_Act_p;
 	int			dist = local.GetDist(pTarg);
-    CUOMap *pMap = g_MapList.GetMap(GetTopPoint().m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap(GetTopPoint().m_map);
 
 	//	do we really need to find the path?
 	if ( iInt < 75 ) return;					// too dumb

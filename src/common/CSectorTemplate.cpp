@@ -136,50 +136,6 @@ CObjPointSortArray::CObjPointSortArray()
 //////////////////////////////////////////////////////////////////
 // -CSectorBase
 
-void CSectorBase::SetAdjacentSectors()
-{
-    const int iMaxX = g_MapList.GetSectorCols(m_map);
-    const int iMaxY = g_MapList.GetSectorRows(m_map);
-    const int iMaxSectors = g_MapList.GetSectorQty(m_map);
-    int index = 0;
-    int iSectorCount = 0;
-    for (int i = 0; i < m_map; ++i) // all sectors are stored in the same array, get a tmp count of all of the lower maps
-    {
-        if (!g_MapList.IsMapSupported(i))   // Skip disabled / unsupported maps
-        {
-            continue;
-        }
-        iSectorCount += g_MapList.GetSectorQty(i);
-    }
-    int tmpIndex[DIR_QTY] =
-    {
-        tmpIndex[DIR_N] = -iMaxX,       // North -iMaxX (an entire row)
-        tmpIndex[DIR_NE] = -(iMaxX - 1),// North East ( -iMaxX  + 1 = -(iMaxX - 1))
-        tmpIndex[DIR_E] = 1,            // East = +1
-        tmpIndex[DIR_SE] = iMaxX + 1,   // SouthEast = iMaxX + 1
-        tmpIndex[DIR_S] = iMaxX,        // South = iMaxX
-        tmpIndex[DIR_SW] = iMaxX - 1,   // SouthWest = iMaxX - 1
-        tmpIndex[DIR_W] = -1,           // West = -1
-        tmpIndex[DIR_NW] = -(iMaxX + 1) // NorthWest = ( -iMaxX - 1 = -(iMaxX + 1))
-    };
-    for (int i = 0; i < (int)DIR_QTY; ++i)
-    {
-        index = iSectorCount + m_index + tmpIndex[i];
-        if ((index <= 0) || (index >= iMaxSectors) || (index % iMaxX == 0) || index % iMaxY == 0) //out out bounds X || Y, first Col or first Row.
-        {
-            _mAdjacentSectors[(DIR_TYPE)i] = nullptr;
-            continue;
-        }
-        _mAdjacentSectors[(DIR_TYPE)i] = g_World.m_Sectors[index];
-    }
-}
-
-CSector *CSectorBase::GetAdjacentSector(DIR_TYPE dir) const
-{
-    ASSERT(dir >= DIR_N && dir < DIR_QTY);
-    return _mAdjacentSectors.at(dir);
-}
-
 CSectorBase::CSectorBase()
 {
     _iIndex = 0;
@@ -497,14 +453,24 @@ CPointMap CSectorBase::GetBasePoint() const
 {
 	ADDTOCALLSTACK_INTENSIVE("CSectorBase::GetBasePoint");
 	// What is the coord base of this sector. upper left point.
-	ASSERT( m_index >= 0 && m_index < g_MapList.GetSectorQty(m_map) );
-    const int iCols = g_MapList.GetSectorCols(m_map);
-    const int iSize = g_MapList.GetSectorSize(m_map);
+    CUOMap *pMap = nullptr;
+    if (_pMap)
+    {
+        pMap = _pMap;
+    }
+    else
+    {
+        pMap = g_Serv.GetUOMapList().GetMap(_ptBasePoint.m_map);
+    }
+	ASSERT( pMap && pMap->GetSectorQty() );
+    /*const int iCols = pMap->GetSectorCols();
+    const int iSize = pMap->GetSectorSize();
 	CPointMap pt(( (word)((m_index % iCols) * iSize)),
 		(word)((m_index / iCols) * iSize),
 		0,
-		(uchar)(m_map));
-	return pt;
+		(uchar)(m_map));*/
+    ASSERT(_ptBasePoint.IsValidPoint());
+    return _ptBasePoint;
 }
 
 CRectMap CSectorBase::GetRect() const
@@ -512,7 +478,7 @@ CRectMap CSectorBase::GetRect() const
     ADDTOCALLSTACK_INTENSIVE("CSectorBase::GetRect");
 	// Get a rectangle for the sector.
 	const CPointMap pt = GetBasePoint();
-    const int iSectorSize = g_MapList.GetSectorSize(pt.m_map);
+    const int iSectorSize = (int)g_Serv.GetUOMapList().GetMap(_ptBasePoint.m_map)->GetSectorSize();
 	CRectMap rect;
 	rect.m_left = pt.m_x;
 	rect.m_top = pt.m_y;

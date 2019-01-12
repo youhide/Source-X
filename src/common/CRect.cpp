@@ -115,7 +115,7 @@ void CRect::NormalizeRect()
     {
         m_map = 0;
     }
-    if (!g_MapList.GetMap((uchar)m_map))
+    if (!g_Serv.GetUOMapList().GetMap((uchar)m_map))
     {
         m_map = 0;
     }
@@ -155,7 +155,7 @@ size_t CRect::Read( lpctstr pszVal )
 	{
 		case 5:
 			m_map = ATOI(ppVal[4]);
-			if (( m_map < 0 ) || ( m_map >= 256 ) || !g_MapList.GetMap((uchar)m_map) )
+			if (( m_map < 0 ) || ( m_map >= 256 ) || !g_Serv.GetUOMapList().GetMap((uchar)m_map) )
 			{
 				g_Log.EventError("Unsupported map #%d specified. Auto-fixing that to 0.\n", m_map);
 				m_map = 0;
@@ -277,7 +277,7 @@ CSector * CRect::GetSector( int i ) const	// ge all the sectors that make up thi
 	// RETURN: nullptr = no more
 
 	// Align new rect.
-    CUOMap *pMap = g_MapList.GetMap((uchar)m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap((uchar)m_map);
     short iSectorSize = pMap->GetSectorSize();
     short iSectorCols = pMap->GetSectorCols();
     short iSectorRows = pMap->GetSectorRows();
@@ -316,7 +316,7 @@ CSector * CRect::GetSector( int i ) const	// ge all the sectors that make up thi
 
 bool CRectMap::IsValid() const
 {
-    CUOMap *pMap = g_MapList.GetMap((uchar)m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap((uchar)m_map);
     int iSizeX = GetWidth();
     if (iSizeX < 0 || iSizeX > pMap->GetSizeX())
     {
@@ -340,6 +340,6 @@ void CRectMap::NormalizeRect()
 void CRectMap::NormalizeRectMax()
 {
 	ADDTOCALLSTACK("CRectMap::NormalizeRectMax");
-    CUOMap *pMap = g_MapList.GetMap((uchar)m_map);
+    CUOMap *pMap = g_Serv.GetUOMapList().GetMap((uchar)m_map);
 	CRect::NormalizeRectMax(pMap->GetSizeX(), pMap->GetSizeY());
 }

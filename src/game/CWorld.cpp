@@ -829,10 +829,10 @@ void CWorld::Init()
 	if ( m_SectorsQty )	//	disable changes on-a-fly
 		return;
 
-	g_MapList.Init();
-    if (g_MapList.m_pMapDiffCollection)
+	g_Serv.GetUOMapList().Init();
+    if (g_Serv.GetUOMapList().m_pMapDiffCollection)
     {
-        g_MapList.m_pMapDiffCollection->Init();
+        g_Serv.GetUOMapList().m_pMapDiffCollection->Init();
     }
 
 	EXC_CATCH;
@@ -1359,7 +1359,7 @@ void CWorld::SaveStatics()
         CItem *pItem = nullptr;
 		for ( uchar m = 0; m < (uchar)256; ++m )
 		{
-            pMap = g_MapList.GetMap(m);
+            pMap = g_Serv.GetUOMapList().GetMap(m);
             if (!pMap)
             {
                 continue;
@@ -2040,7 +2040,7 @@ void CWorld::RespawnDeadNPCs()
 
 	for ( uchar m = 0; m < (uchar)256; ++m )
 	{
-        pMap = g_MapList.GetMap(m);
+        pMap = g_Serv.GetUOMapList().GetMap(m);
         if (!pMap)
         {
             continue;
@@ -2085,7 +2085,7 @@ void CWorld::Restock()
     CUOMap *pMap = nullptr;
     for (uchar m = 0; m < (uchar)256; ++m)
     {
-        pMap = g_MapList.GetMap(m);
+        pMap = g_Serv.GetUOMapList().GetMap(m);
         if (!pMap)
         {
             continue;
@@ -2128,7 +2128,7 @@ void CWorld::Close()
         pClient->CharDisconnect();
     }
 
-    g_MapList.Close();
+    g_Serv.GetUOMapList().Close();
 
 	CloseAllUIDs();
 

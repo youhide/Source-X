@@ -1476,3 +1476,23 @@ WARNING: the following change could break some hackish expedient used in scripts
 
 11-01-2019, Nolok
 - Fixed: NPC skill training (Issue #176).
+
+12-01-2019, XuN
+[sphere.ini]:
+- Removed last parameter from MAPx since it has no other purpose than overriding the 'x' value already given in MAPx (eg MAP10=6144,4096,-1,0,11 would make map10 to be named map11).
+- Renamed SectorSleep to SectorSleepFlag and changed how it works:
+    // Flags used for sector sleeping behaviour:
+    // 0 = Default: Let Sphere choose what to do*
+    // 1 = InstaSleep: Force sleeping (Only working if SectorSleepFlag is not set to NoSleep, sector doesn't have secf_nosleep flag, and there are no players inside).
+    // 2 = NoSleep: Prevent sectors from sleeping (This will override sector flags, default checks and custom Sleep calls on sectors).
+    //
+    // * With default behaviour sector(s) can't sleep in the following conditions:
+    // a) secf_nosleep flag in the sector or SectorSleepFlag = 1 (NoSleep)
+    // b) sector has players
+    // c) Adjacent sectors can not sleep (the same check will be applied on a 1x1 square around the sector)
+    // if nothing stops the code until here, then the sector can sleep.
+    //
+    // Note: setting this value to 1 or secf_instasleep will force sleeping avoiding the check for adjacent sectors, which may cause undesired behaviours like NPCs stop moving (Which may help
+    // players attack them while they cannot fight back, they won't die too until they can tick, also they won't see players or do anything), spawns not generating NPCs, items not decaying ...
+    // which will all change when a player enter the sector again if their timers did expire (something like 3 spawns generating NPCs at once, all NPCs starting to move at the same moment,
+    // items ticking at once ...).

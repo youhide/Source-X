@@ -6,6 +6,7 @@
 #include "chars/CCharNPC.h"
 #include "components/CCPropsChar.h"
 #include "../game/uo_files/CUOMap.h"
+#include "../game/CServer.h"
 
 
 //********************************
@@ -402,12 +403,12 @@ lpctstr CServerConfig::Calc_MaptoSextant( CPointMap pntCoords )
 	CPointMap zeroPoint;
 	zeroPoint.Read(strcpy(z, g_Cfg.m_sZeroPoint));
 
-	int iLat = (pntCoords.m_y - zeroPoint.m_y) * 360 * 60 / g_MapList.GetMap(zeroPoint.m_map)->GetSizeY();
+	int iLat = (pntCoords.m_y - zeroPoint.m_y) * 360 * 60 / g_Serv.GetUOMapList().GetMap(zeroPoint.m_map)->GetSizeY();
 	int iLong;
 	if ( pntCoords.m_map <= 1 )
 		iLong = (pntCoords.m_x - zeroPoint.m_x) * 360 * 60 / UO_SIZE_X_REAL;
 	else
-		iLong = (pntCoords.m_x - zeroPoint.m_x) * 360 * 60 / g_MapList.GetMap(pntCoords.m_map)->GetSizeX();
+		iLong = (pntCoords.m_x - zeroPoint.m_x) * 360 * 60 / g_Serv.GetUOMapList().GetMap(pntCoords.m_map)->GetSizeX();
 
 	tchar * pTemp = Str_GetTemp();
 	sprintf( pTemp, "%io %i'%s, %io %i'%s",

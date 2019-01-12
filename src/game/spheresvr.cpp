@@ -123,7 +123,6 @@ CWorld			g_World;			// the world. (we save this stuff)
 // Again, game servers stuff.
 CServerConfig	g_Cfg;
 CServer			g_Serv;				// current state, stuff not saved.
-CUOMapList		g_MapList;			// global maps information
 CUOInstall		g_Install;
 CVerDataMul		g_VerData;
 CExpression		g_Exp;				// Global script variables.
